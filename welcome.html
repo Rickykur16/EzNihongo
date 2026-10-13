@@ -4879,6 +4879,7 @@
     #ai-senpai *, #ai-senpai *::before, #ai-senpai *::after { animation: none !important; }
   }
 </style>
+<link rel="stylesheet" href="styles/n5-learning-copy.css?v=20261013-1"/>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
 <link rel="stylesheet" href="final-exam.css?v=20261003-4"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
@@ -4991,6 +4992,7 @@ function getUserName(user = session) {
 <script src="src/bunny-video.js?v=20261008-1"></script>
 <script src="src/bunny-player.js?v=20261008-1"></script>
 <script src="final-exam.js?v=20261003-4"></script>
+<script src="src/n5-learning-copy.js?v=20261013-1"></script>
 <script>
 // ═══════════════════════════════════════════════
 // AUTH GUARD — self-hosted API session
@@ -5024,6 +5026,7 @@ function splitJpFromContent(content) {
 }
 
 function transformCourseFromApi(apiCourse) {
+  apiCourse = globalThis.EzN5Copy?.prepareCourse(apiCourse) || apiCourse;
   return {
     name: apiCourse.title || apiCourse.slug,
     level: (apiCourse.level || apiCourse.slug || '').toUpperCase(),
@@ -5037,7 +5040,7 @@ function transformCourseFromApi(apiCourse) {
       titleEn: m.title_en || '',
       jfTopic: m.jf_topic || '',
       cefrLevel: m.cefr_level || '',
-      sectionName: globalThis.EzFinalExam?.isFinalModule(m) ? 'Final Exam' : (m.section_name && m.section_name.trim()) || '',
+      sectionName: globalThis.EzFinalExam?.isFinalModule(m) ? (apiCourse.slug === 'n5' ? 'Ujian Akhir' : 'Final Exam') : (m.section_name && m.section_name.trim()) || '',
       totalMinutes: m.total_minutes || null,
       scenario: m.scenario || '',
       candoStatements: Array.isArray(m.cando_statements) ? m.cando_statements : [],
@@ -5051,6 +5054,7 @@ function transformCourseFromApi(apiCourse) {
           id: l.slug,
           apiId: l.id, // UUID — needed to lazy-load quiz questions
           title: l.title,
+          sourceTitle: l.sourceTitle || l.title,
           type: l.type || 'text',
           videoUrl: l.video_url || null,
           videoSource: l.video_source_id && l.video_external_id ? {
@@ -5062,7 +5066,7 @@ function transformCourseFromApi(apiCourse) {
           } : null,
           videoStartSeconds: l.video_start_seconds == null ? null : Number(l.video_start_seconds),
           videoEndSeconds: l.video_end_seconds == null ? null : Number(l.video_end_seconds),
-          duration: l.duration_minutes ? `${l.duration_minutes} min` : '',
+          duration: l.duration_minutes ? `${l.duration_minutes} ${apiCourse.slug === 'n5' ? 'menit' : 'min'}` : '',
           durationMinutes: Number(l.duration_minutes) || 0,
           body,
           jp,
@@ -5830,7 +5834,7 @@ async function renderQuizLesson(container, courseSlug, moduleId, lessonId) {
   container.innerHTML = `
     <div class="quiz-container">
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
-        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${kanaPlacementMeta({ id: lessonId }) ? 'Tes Diagnostik Kana' : 'Assignment Harian'}</div>
+        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${kanaPlacementMeta({ id: lessonId }) ? 'Tes Diagnostik Kana' : (courseSlug === 'n5' ? 'Tes N5' : 'Assignment Harian')}</div>
         <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
           ${[1,2,3,4].map(() => `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;height:54px;"><div style="background:#eee;height:10px;width:60%;border-radius:4px;margin-bottom:8px;"></div><div style="background:#eee;height:14px;width:40%;border-radius:4px;"></div></div>`).join('')}
@@ -5879,6 +5883,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
     assessmentRules:update.assessmentRules ?? status.assessmentRules,
     objectives:update.objectives ?? status.objectives };
   const [navSlug, navMid, navLid] = String(key).split(':');
+  const n5Copy = navSlug === 'n5' && !!globalThis.EzN5Copy;
   const placement = kanaPlacementMeta({ id: navLid });
   const chapter = !!status.assessmentVersion && !status.resumingLegacy;
   const finalExam = chapter && globalThis.EzFinalExam?.isFinal(status.assessmentVersion);
@@ -5899,7 +5904,7 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
       : `<span style="background:#fee2e2;color:#b91c1c;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;">Belum lulus</span>`;
     lastBlock = `
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin-top:18px;">
-        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement ? 'Hasil tes terakhir' : 'Hasil assessment terakhir'}</div>
+        <div style="font-size:11px;color:#737373;letter-spacing:.04em;text-transform:uppercase;font-weight:700;margin-bottom:6px;">${placement || n5Copy ? 'Hasil tes terakhir' : 'Hasil assessment terakhir'}</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <strong style="font-size:18px;">${last.scoreReport ? `${Number(last.scoreReport.score)} / 180` : `${last.score} / ${last.totalQuestions}`}</strong>
           <span style="color:#525252;">${last.scoreReport ? 'Skor simulasi JLPT' : `(${lastPct}%)`}</span>
@@ -5911,14 +5916,14 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
 
   const canAttempt = status.canAttempt;
   const ctaButton = canAttempt
-    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}'${startOptions})" style="padding:14px 28px;font-size:16px;">${status.inProgress ? 'Lanjutkan jawaban' : finalExam ? 'Mulai final exam' : chapter ? 'Mulai assessment' : 'Mulai Kuis'} →</button>`
+    ? `<button class="btn-primary" onclick="window.startQuizAttempt('${escapeAttr(key)}'${startOptions})" style="padding:14px 28px;font-size:16px;">${status.inProgress ? 'Lanjutkan jawaban' : finalExam ? (n5Copy ? 'Mulai ujian akhir' : 'Mulai final exam') : chapter ? (n5Copy ? 'Mulai tes' : 'Mulai assessment') : 'Mulai Kuis'} →</button>`
     : `<button class="btn-primary" disabled style="padding:14px 28px;font-size:16px;">⏱ Tunggu ${fmtCooldown(status.cooldownHoursLeft)}</button>`;
 
   const noCooldown = (status.cooldownHours || 0) <= 0;
   const cooldownNote = canAttempt
     ? (noCooldown
-        ? `Kuis ini <strong>tanpa cooldown</strong> — bisa coba ulang kapan saja.`
-        : `Setelah submit, attempt berikutnya bisa dicoba ${status.cooldownHours} jam kemudian.`)
+        ? `Kuis ini <strong>tanpa ${n5Copy ? 'waktu tunggu' : 'cooldown'}</strong> — bisa coba ulang kapan saja.`
+        : `${n5Copy ? 'Setelah jawaban dikirim, tes berikutnya bisa dicoba' : 'Setelah submit, attempt berikutnya bisa dicoba'} ${status.cooldownHours} jam kemudian.`)
     : `<strong>Kuis terkunci.</strong> Bisa coba lagi pada <strong>${fmtNextAt(status.nextAttemptAt)}</strong> (sekitar ${fmtCooldown(status.cooldownHoursLeft)} lagi).`;
 
   // Navigasi pelajaran (gate lunak): "Sebelumnya" selalu ada; "Lanjut →" hanya
@@ -5940,24 +5945,24 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
   container.innerHTML = `
     <div class="quiz-container">
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px 26px;max-width:680px;margin:0 auto;">
-        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${placement ? 'Tes Diagnostik Kana' : finalExam ? 'Ujian akhir level' : chapter ? 'Assessment bab' : 'Assignment Harian'}</div>
+        <div style="font-size:11px;color:#b91c1c;letter-spacing:.08em;text-transform:uppercase;font-weight:800;margin-bottom:6px;">${placement ? 'Tes Diagnostik Kana' : finalExam ? 'Ujian akhir level' : chapter ? (n5Copy ? 'Tes Bab' : 'Assessment bab') : (n5Copy ? 'Kuis Latihan' : 'Assignment Harian')}</div>
         <h2 style="margin:0 0 18px;font-size:24px;font-weight:800;line-height:1.3;">${escapeHtml(lessonTitle)}</h2>
         ${!completedPlacement ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;">
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Pool soal</div>
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">${n5Copy ? 'Bank soal' : 'Pool soal'}</div>
             <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.poolSize}</div>
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Per attempt</div>
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">${n5Copy ? 'Soal per tes' : 'Per attempt'}</div>
             <div style="font-size:18px;font-weight:800;margin-top:2px;">${status.questionsPerAttempt} ${chapter ? 'soal' : 'acak'}</div>
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Lulus min</div>
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">${n5Copy ? 'Nilai minimum' : 'Lulus min'}</div>
             <div style="font-size:18px;font-weight:800;margin-top:2px;">${simulatedFinal ? `${Number(status.assessmentRules.passingScore)}/180` : `${status.passingScorePct}%`}</div>
           </div>
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">Cooldown</div>
-            <div style="font-size:18px;font-weight:800;margin-top:2px;">${(status.cooldownHours || 0) > 0 ? `${status.cooldownHours}h` : 'Tanpa'}</div>
+            <div style="font-size:11px;color:#737373;text-transform:uppercase;letter-spacing:.04em;font-weight:700;">${n5Copy ? 'Bisa diulang setelah' : 'Cooldown'}</div>
+            <div style="font-size:18px;font-weight:800;margin-top:2px;">${(status.cooldownHours || 0) > 0 ? `${status.cooldownHours}${n5Copy ? ' jam' : 'h'}` : 'Tanpa'}</div>
           </div>
         </div>` : ''}
         <p style="color:#525252;font-size:14px;line-height:1.6;margin:0 0 4px;">
@@ -5970,9 +5975,10 @@ function renderQuizLandingCard(container, key, lessonTitle, status) {
             : finalExam
             ? `${status.questionsPerAttempt} soal orisinal untuk menguji materi satu level: aksara/kosakata, tata bahasa, membaca, dan menyimak. ${rotatingFinal ? 'Komposisi mengikuti patokan jumlah soal JLPT; jumlah resmi dapat sedikit berbeda tiap pelaksanaan. Dua paket A/B bergantian saat memulai ujian baru. Sebagian soal dasar dapat sama. Melanjutkan draft tetap memakai paket yang sama. ' : ''}${simulatedFinal ? globalThis.EzFinalExam.scoringDescription(status.assessmentRules) : 'Lulus dengan total minimal 70% dan tiap kategori minimal 50%. Nilai berupa persentase EzNihongo, bukan skala resmi JLPT.'} Ujian tanpa batas waktu otomatis dan audio boleh diulang. Pembahasan serta transkrip tersedia setelah submit. Siapkan audio.`
             : chapter
-            ? `${status.questionsPerAttempt} soal pilihan ganda: ${status.questionsPerAttempt === 24 ? '6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. ' : ''}Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
-            : `Tiap attempt, sistem ambil <strong>${status.questionsPerAttempt}</strong> soal acak dari pool <strong>${status.poolSize}</strong> — jadi soal bisa beda tiap retry.`}
+            ? `${status.questionsPerAttempt} soal pilihan ganda: ${status.questionsPerAttempt === 24 ? '6 aksara dan kosakata, 10 tata bahasa dan ungkapan, 4 membaca, serta 4 menyimak. ' : ''}${n5Copy ? '' : 'Lulus dengan total minimal 70%, tiap kategori minimal 50%, serta minimal satu jawaban benar untuk setiap tujuan. '}Pembahasan dan transkrip audio muncul setelah semua jawaban dikirim. Siapkan audio.`
+            : `${n5Copy ? 'Setiap tes mengambil' : 'Tiap attempt, sistem ambil'} <strong>${status.questionsPerAttempt}</strong> soal acak dari ${n5Copy ? 'bank' : 'pool'} <strong>${status.poolSize}</strong>. ${n5Copy ? 'Soal dapat berbeda saat tes diulang.' : 'Soal bisa beda tiap retry.'}`}
         </p>
+        ${n5Copy && chapter && !finalExam && !placement && !status.resumingLegacy ? `<div class="n5-test-rules"><strong>Syarat lulus</strong><ul><li>Nilai total minimal ${Number(status.passingScorePct) || 70}%.</li><li>Nilai tiap kategori minimal ${Number(status.assessmentRules?.categoryMinimumPct) || 50}%.</li><li>Minimal ${Number(status.assessmentRules?.minimumObjectiveCorrect) || 1} jawaban benar untuk setiap tujuan belajar yang diuji.</li></ul></div>` : ''}
         ${chapter ? `<details style="margin:12px 0"><summary>Tujuan yang diuji</summary><ul>${(status.objectives || []).map(o => `<li>${escapeHtml(o.canDo)}</li>`).join('')}</ul></details>` : ''}
         ${!completedPlacement ? `<p style="color:#525252;font-size:13px;line-height:1.6;margin:0 0 22px;">
           ${cooldownNote}
@@ -7473,6 +7479,7 @@ function renderCmsOnlyCourseStub(courseSlug) {
 }
 
 function renderLearning(courseSlug) {
+  document.body?.classList?.toggle('learning-n5', courseSlug === 'n5');
   const course = COURSE_CONTENT[courseSlug];
   // Stub when the course doesn't hydrate (API down, unpublished, not yet
   // populated) or has no modules yet (admin created shell, hasn't added
@@ -8812,6 +8819,7 @@ const MODULE_INTRO_ICONS = {
 };
 
 function renderModuleIntro(module) {
+  const n5 = typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy;
   const progress = getProgress()[currentState.course] || {};
   const plan = getModuleIntroPlan(module, progress);
   const isDone = (lesson) => progress[`${module.id}:${lesson.id}`] === true;
@@ -8834,10 +8842,10 @@ function renderModuleIntro(module) {
   // ── Header ──
   const chips = [];
   if (/^n\d$/i.test(currentState.course || '')) chips.push(String(currentState.course).toUpperCase());
-  if (module.cefrLevel) chips.push(`CEFR ${module.cefrLevel}`);
+  if (!n5 && module.cefrLevel) chips.push(`CEFR ${module.cefrLevel}`);
   const meta = [];
   if (plan.lessons.length) meta.push(`<span>${MODULE_INTRO_ICONS.list}${plan.lessons.length} materi</span>`);
-  if (module.jfTopic) meta.push(`<span>${MODULE_INTRO_ICONS.topic}Topik: ${escapeHtml(module.jfTopic)}</span>`);
+  if (!n5 && module.jfTopic) meta.push(`<span>${MODULE_INTRO_ICONS.topic}Topik: ${escapeHtml(module.jfTopic)}</span>`);
   const ringOffset = (301.59 * (1 - plan.percent / 100)).toFixed(2);
   const ring = plan.lessons.length ? `
     <div class="module-intro-ring" role="img" aria-label="${plan.completed} dari ${plan.lessons.length} materi selesai, ${plan.percent} persen">
@@ -8924,8 +8932,8 @@ function renderModuleIntro(module) {
     cards.push(card(firstOpen, 'pola tata bahasa', content.grammar.items.length, 'Pola', '文法', `
       <ul class="module-learn-patterns">
         ${shown.map((g) => {
-          const meaning = moduleIntroFirstSentence(g.meaning);
-          return `<li><span class="p" lang="ja">${escapeHtml(g.pattern)}</span>${meaning ? `<span class="d">${escapeHtml(meaning)}</span>` : ''}</li>`;
+          const meaning = moduleIntroFirstSentence(n5 ? n5.meaning(g.meaning) : g.meaning);
+          return `<li><span class="p" lang="ja">${escapeHtml(n5 ? n5.pattern(g.pattern) : g.pattern)}</span>${meaning ? `<span class="d">${escapeHtml(meaning)}</span>` : ''}</li>`;
         }).join('')}
         ${more > 0 ? `<li class="module-learn-more">+${more} pola lain</li>` : ''}
       </ul>`, foot));
@@ -9076,12 +9084,13 @@ function renderLessonVocab(lesson) {
 }
 
 function renderLessonGrammar(lesson) {
+  const n5 = typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy;
   const rows = Array.isArray(lesson.grammar) ? lesson.grammar : [];
   if (rows.length === 0) return '';
   const sorted = rows.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   return `
     <div class="lesson-extra-card">
-      <h3>📖 Grammar di pelajaran ini (${sorted.length})</h3>
+      <h3>📖 ${n5 ? 'Tata bahasa' : 'Grammar'} di pelajaran ini (${sorted.length})</h3>
       <div id="bunpou-analysis"></div>
       <div class="grammar-list">
         ${sorted.map((g) => {
@@ -9100,8 +9109,8 @@ function renderLessonGrammar(lesson) {
             </div>`).join('');
           return `
           <div class="grammar-card" data-grammar-id="${escapeHtml(g.id || '')}">
-            <div class="grammar-pattern"><span class="ba-dot" data-ba-dot="${escapeHtml(g.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>${escapeHtml(g.pattern || '')}</div>
-            ${g.meaning ? `<div class="grammar-meaning">${escapeHtml(g.meaning)}</div>` : ''}
+            <div class="grammar-pattern"><span class="ba-dot" data-ba-dot="${escapeHtml(g.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>${escapeHtml(n5 ? n5.pattern(g.pattern) : (g.pattern || ''))}</div>
+            ${g.meaning ? `<div class="grammar-meaning">${n5 ? '<strong>Fungsi:</strong> ' : ''}${escapeHtml(n5 ? n5.meaning(g.meaning) : g.meaning)}</div>` : ''}
             ${examples.length > 0 ? `<div class="grammar-block grammar-collapsible" data-collapsed="1">
               <button type="button" class="grammar-block-toggle" onclick="window.grammarBlockToggle(this)">
                 <span class="grammar-block-label">📝 Contoh${examples.length > 1 ? ` (${examples.length})` : ''}</span>
@@ -9109,7 +9118,7 @@ function renderLessonGrammar(lesson) {
               </button>
               <div class="grammar-block-content">${examplesHtml}</div>
             </div>` : ''}
-            ${g.notes ? `<div class="grammar-notes">${escapeHtml(g.notes)}</div>` : ''}
+            ${g.notes ? `<div class="grammar-notes">${n5 ? '<strong>Pola dan catatan</strong>' + n5.notes(g.notes, escapeHtml) : escapeHtml(g.notes)}</div>` : ''}
             ${!lesson.hasConversation && Array.isArray(g.dialogueSelfChecks) && g.example_dialog ? `<section class="grammar-block" style="margin-top:20px">
               <h3>💬 Percakapan</h3>
               ${g.communication_goal ? `<p>${escapeHtml(g.communication_goal)}</p>` : ''}
@@ -9134,7 +9143,7 @@ function renderConversationLesson(course, module, lesson, nav) {
   const root = document.getElementById('main-content');
   const linkedTask = source && next?.module === module &&
     taskSourceLesson(module, next.lesson) === source ? next : null;
-  const nextLabel = next?.lesson?.type === 'grammar_task' ? 'Tugas Bunpou' : '';
+  const nextLabel = next?.lesson?.type === 'grammar_task' ? (typeof currentState !== 'undefined' && currentState.course === 'n5' ? 'Latihan Tata Bahasa' : 'Tugas Bunpou') : '';
   root.innerHTML = `
     <p class="lesson-breadcrumb">${escapeHtml(course.name)} · Modul <span>${escapeHtml(module.num)}</span> · PERCAKAPAN</p>
     <h1 class="lesson-title">${escapeHtml(lesson.title)}</h1>
@@ -9144,7 +9153,7 @@ function renderConversationLesson(course, module, lesson, nav) {
     ${dialogs.length ? `<div class="grammar-list">
       ${dialogs.map((grammar, index) => `
         <section class="lesson-extra-card grammar-card" data-grammar-id="${escapeHtml(grammar.id || '')}">
-          <h2 class="grammar-pattern">${escapeHtml(grammar.pattern || `Percakapan ${index + 1}`)}</h2>
+          <h2 class="grammar-pattern">${escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.pattern(grammar.pattern || `Percakapan ${index + 1}`) : (grammar.pattern || `Percakapan ${index + 1}`))}</h2>
           ${source.bunpouFlow?.directions?.[grammar.id] ? `<p class="grammar-listening-direction">🎧 ${escapeHtml(source.bunpouFlow.directions[grammar.id])}</p>` : ''}
           <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" hidden></div>
           ${grammarKaraokeHtml(String(grammar.example_dialog).trim(), `g${index}`,
@@ -9803,7 +9812,7 @@ function baStripHtml(data) {
   if (s.dueReview) bits.push(`${s.dueReview} pola perlu diulang`);
   if (!bits.length) {
     bits.push(s.analyzed === 0
-      ? 'Kerjakan Tugas Bunpou-nya dulu supaya bisa dianalisis'
+      ? (currentState.course === 'n5' ? 'Kerjakan latihan tata bahasa untuk melihat pemahamanmu.' : 'Kerjakan Tugas Bunpou-nya dulu supaya bisa dianalisis')
       : `${s.analyzed} pola sedang dipelajari`);
   }
   const barColor = !hasPct ? 'var(--du-border)'
@@ -9811,7 +9820,7 @@ function baStripHtml(data) {
   return `
     <div class="bunpou-analysis">
       <div class="ba-head">
-        <div class="ba-title">Pemahaman Bunpou</div>
+        <div class="ba-title">${currentState.course === 'n5' ? 'Pemahaman Tata Bahasa' : 'Pemahaman Bunpou'}</div>
         <div class="ba-pct">${hasPct ? s.pct + '%' : '—'}</div>
       </div>
       <div class="ba-bar"><div class="ba-bar-fill" style="width:${hasPct ? s.pct : 0}%;background:${barColor};"></div></div>
@@ -10087,7 +10096,9 @@ function renderDeckLesson(course, module, lesson, nav) {
     window.__deckEscWired = true;
   }
 
-  const intro = (lesson.body && lesson.body.trim())
+  const intro = typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy
+    ? globalThis.EzN5Copy.intro(lesson, module, 'deck', items.length)
+    : (lesson.body && lesson.body.trim())
     ? lesson.body.replace(/<\/?p>/gi, ' ').replace(/\s+/g, ' ').trim()
     : 'Klik kartu untuk melihat contoh kalimat, atau klik tombol speaker untuk mendengar pengucapan.';
   const exampleCount = items.reduce((n, it) => n + (Array.isArray(it.examples) ? it.examples.length : 0), 0);
@@ -10337,11 +10348,11 @@ function gtCardsHtml(items, sttOn, showDots) {
     ? '<div id="gt-session-notice" class="gt-callout" role="status" aria-live="polite" hidden></div>' : '';
   return sessionNotice + items.map((it, pi) => {
     const count = Math.max(1, Number(it.requiredCount) || 1);
-    const pattern = escapeHtml(it.pattern || '');
-    const meaning = escapeHtml(it.meaning || '');
+    const pattern = escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.pattern(it.pattern) : (it.pattern || ''));
+    const meaning = escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.meaning(it.meaning) : (it.meaning || ''));
     const example = it.example ? escapeHtml(it.example) : '';
     const instruction = it.instruction && it.instruction.trim()
-      ? escapeHtml(it.instruction.trim())
+      ? escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.clean(it.instruction.trim()) : it.instruction.trim())
       : `Buat ${count} kalimat memakai pola ini, lalu ucapkan atau ketik.`;
     const hint = sttOn ? 'Tahan 🎤 lalu ucapkan kalimatmu, lepas saat selesai — kalimatmu langsung diperiksa.' : 'Ketik kalimatmu dalam bahasa Jepang, lalu tekan Enter untuk memeriksa.';
     let slots = '';
@@ -11191,12 +11202,14 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
   const sttOn = _gtSttSupported();
   window.__gtState = { passed: {}, total: gtTotalRequired(items), evalDisabled: false, isDone: !!isDone, hasNext: !!next, isPopup: false };
 
-  const intro = (lesson.body && lesson.body.trim())
+  const intro = typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy
+    ? globalThis.EzN5Copy.intro(lesson, module, 'grammar_task', items.length)
+    : (lesson.body && lesson.body.trim())
     ? lesson.body
     : 'Kerjakan tugas tiap pola grammar di bawah: buat kalimat sesuai instruksi, lalu ucapkan (atau ketik). Kalimatmu dinilai otomatis.';
 
   document.getElementById('main-content').innerHTML = `
-    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · TUGAS GRAMMAR</p>
+    <p class="lesson-breadcrumb">${course.name} · Modul <span>${module.num}</span> · ${currentState.course === 'n5' ? 'LATIHAN TATA BAHASA' : 'TUGAS GRAMMAR'}</p>
     <h1 class="lesson-title">${lesson.title}</h1>
     <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
     <div class="deck-hero" style="margin-bottom:18px;">
@@ -11854,7 +11867,9 @@ function renderKanjiLesson(course, module, lesson, nav) {
   for (const k of items) {
     if (k.id) _kanjiByIdCache.set(k.id, { ...k, compounds: k.compounds || [] });
   }
-  const intro = (lesson.body && lesson.body.trim())
+  const intro = typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy
+    ? globalThis.EzN5Copy.intro(lesson, module, 'kanji', items.length)
+    : (lesson.body && lesson.body.trim())
     ? lesson.body.replace(/<\/?p>/gi, ' ').replace(/\s+/g, ' ').trim()
     : 'Klik karakter untuk melihat goresan, cara mengingat, dan kata nyata yang memakai Kanji ini.';
 
@@ -11966,7 +11981,9 @@ function renderKanaLesson(course, module, lesson, nav) {
     window.__kanaEscWired = true;
   }
 
-  const intro = (lesson.body && lesson.body.trim())
+  const intro = typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy
+    ? globalThis.EzN5Copy.intro(lesson, module, 'kana', items.length)
+    : (lesson.body && lesson.body.trim())
     ? lesson.body
     : 'Klik karakter untuk dengar bunyi, lihat urutan goresan, mnemonic, dan contoh kata.';
 
@@ -12056,7 +12073,7 @@ function renderKanaLesson(course, module, lesson, nav) {
     ${videoBlock}
     <div class="deck-hero">
       <div>
-        <div class="dh-eyebrow">かな · HIRAGANA & KATAKANA</div>
+        <div class="dh-eyebrow">かな · ${currentState.course === 'n5' ? (module.id === 'n5-b1' ? 'HIRAGANA' : 'KATAKANA') : 'HIRAGANA & KATAKANA'}</div>
         <div class="dh-body">${escapeHtml(intro)}</div>
       </div>
       <div class="dh-stat" aria-label="${items.length} karakter">
@@ -14199,12 +14216,14 @@ function renderLesson() {
   const n4WrittenLesson = currentState.course === 'n4' && !hasVideo;
   const videoBlock = lesson.type === 'video' && !n4WrittenLesson ? renderVideoLessonPlayer(lesson) : '';
 
+  const n5 = typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy;
+  const n5Body = n5 ? n5.lessonBody(lesson, module) : '';
   const bodyBlock = `
     <div class="lesson-body">
       <h2>Catatan Pelajaran ${lesson.jp ? `<button class="pronounce-btn" style="vertical-align:middle;font-size:11px;" onclick="window.speakLessonJP(this)">🔊 Putar Jepang</button>` : ''}</h2>
-      <p>${lesson.body}</p>
+      ${n5 ? ((lesson.sourceTitle === 'angka (すうじ）' && /Rumus belasan/.test(n5Body)) ? n5.numbers(escapeHtml) : n5.renderBody(n5Body, escapeHtml, sanitizeHtml)) : `<p>${lesson.body}</p>`}
       ${lesson.jp ? `<div class="jp" id="lesson-jp">${lesson.jp}</div>` : ''}
-      ${n4WrittenLesson ? '<p style="color:#777;font-size:13px;margin-top:18px;">Baca penjelasan dan contoh, dengarkan pelafalannya, lalu kerjakan tugas serta latihan tertulis bab ini.</p>' : '<p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>'}
+      ${n5 ? '' : (n4WrittenLesson ? '<p style="color:#777;font-size:13px;margin-top:18px;">Baca penjelasan dan contoh, dengarkan pelafalannya, lalu kerjakan tugas serta latihan tertulis bab ini.</p>' : '<p style="color:#999;font-size:13px;margin-top:18px;">Materi lengkap: video tutorial, contoh audio, dan worksheet PDF tersedia saat belajar.</p>')}
     </div>
   `;
 
@@ -14275,6 +14294,7 @@ window.closeChapterWorksheet = () => {
 };
 
 function renderLessonMaterials(module, lesson) {
+  if (currentState.course === 'n5') return `<div class="lesson-tabs"><div class="tabs-body"><h3>Materi Pendukung</h3><p class="resource-unavailable">Lembar latihan belum tersedia untuk pelajaran ini.</p></div></div>`;
   if (currentState.course === 'n4') return `<div class="lesson-tabs"><div class="tabs-body"><h3 style="margin:0 0 12px;font-size:14px;">📎 Materi Pendukung</h3><div class="resource-list"><button type="button" class="resource-card" onclick="openChapterWorksheet()"><span class="res-ico">📄</span><span class="res-info"><span class="res-title">Latihan tertulis Bab ${escapeHtml(module.num)}</span><span class="res-sub">Tugas, contoh jawaban, dan catatan — dapat dicetak</span></span><span class="res-arr">→</span></button></div></div></div>`;
   return `
     <div class="lesson-tabs" id="lesson-tabs">

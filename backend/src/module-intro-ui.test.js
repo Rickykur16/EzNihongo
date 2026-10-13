@@ -215,3 +215,17 @@ test('summary does not show lesson or module durations', () => {
   assert.doesNotMatch(output, /menit/);
   assert.match(output, /Materi 2 dari 7 · Kanji · 2 kanji</);
 });
+
+test('N5 summary hides CEFR and topic and uses the N5 grammar labels', () => {
+  const context = setupRenderer({ 'bab-12:kosakata': true });
+  const module = { ...chapter, cefrLevel: 'A1-A2', jfTopic: 'Interaction' };
+  assert.match(context.renderModuleIntro(module), /CEFR A1-A2[\s\S]*Topik: Interaction/);
+
+  context.EzN5Copy = {
+    pattern: (value) => `N5 ${value}`,
+    meaning: (value) => `Arti ${value}`,
+  };
+  const output = context.renderModuleIntro(module);
+  assert.doesNotMatch(output, /CEFR|Topik:/);
+  assert.match(output, /<span class="p" lang="ja">N5 〜て、〜<\/span><span class="d">Arti Merangkai kegiatan\.<\/span>/);
+});
