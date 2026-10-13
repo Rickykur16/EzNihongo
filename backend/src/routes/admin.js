@@ -5008,7 +5008,7 @@ router.get('/users', asyncHandler(async (req, res) => {
   listParams.push(limit, offset);
   const result = await query(
     `SELECT u.id, u.email, u.full_name, u.google_name, u.avatar_url, u.created_at,
-            COALESCE(s.xp, 0) AS xp, COALESCE(s.streak_days, 0) AS streak_days,
+            COALESCE(s.streak_days, 0) AS streak_days,
             COALESCE(s.total_lessons_completed, 0) AS total_lessons_completed,
             s.last_active_date,
             mp.birth_date, mp.province, mp.city, mp.phone, mp.learning_goal, mp.referral_source

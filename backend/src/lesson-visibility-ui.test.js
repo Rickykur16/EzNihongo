@@ -56,7 +56,7 @@ test('finishing grammar opens its Percakapan lesson before the pending task and 
   vm.runInContext(welcome.slice(start, end), context);
   await context.window.markCompleteAndNext({ disabled: false, setAttribute() {} });
   assert.equal(completions, 0, 'pending real task keeps course incomplete');
-  assert.equal(writes, 1); assert.equal(xp, 1);
+  assert.equal(writes, 1); assert.equal(xp, 0);
   assert.equal(progress.n5['bab3:source'], true);
   assert.equal(progress.n5['bab3:task'], undefined);
   assert.equal(context.currentState.lessonId, 'conv', 'the Percakapan comes right after its source');

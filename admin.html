@@ -1372,7 +1372,7 @@ async function renderAiSettings() {
       <p style="font-size:13px;color:#525252;font-family:var(--font-body);margin:0 0 6px;">
         Menghitung kebijakan penilaian <strong>usulan</strong> di samping kebijakan yang berjalan, lalu
         menunjukkan di mana keduanya berbeda. <strong>Tidak ada yang berubah untuk siswa</strong> &mdash;
-        label, progres, XP, dan antrean review semuanya masih memakai kebijakan lama.
+        label, progres, dan antrean review semuanya masih memakai kebijakan lama.
       </p>
       <p style="font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;font-family:var(--font-body);margin:0 0 12px;">
         Angka ambang batas di kebijakan usulan <strong>belum diratifikasi</strong>. Nilainya ada supaya
@@ -8876,7 +8876,6 @@ function renderUsersResult() {
     <tr>
       <td><strong>${escapeHtml(u.full_name || '-')}</strong><br><span style="font-size:11px;color:#737373;">${escapeHtml(u.email)}</span></td>
       <td>${u.city ? `${escapeHtml(u.city)}, ${escapeHtml(u.province)}` : '<span style="color:#a3a3a3;">-</span>'}</td>
-      <td>${u.xp || 0}</td>
       <td>${u.streak_days || 0}</td>
       <td>${u.total_lessons_completed || 0}</td>
       <td>${u.last_active_date || '-'}</td>
@@ -8889,7 +8888,7 @@ function renderUsersResult() {
     : '';
   wrap.innerHTML = `
     <div style="font-size:12px;color:#737373;margin-bottom:8px;">Menampilkan ${users.length} dari ${total} pengguna.</div>
-    <table><thead><tr><th>Nama / email</th><th>Domisili</th><th>XP</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <table><thead><tr><th>Nama / email</th><th>Domisili</th><th>Streak</th><th>Lesson selesai</th><th>Aktif terakhir</th><th>Bergabung</th><th></th></tr></thead><tbody>${rows}</tbody></table>
     ${more}
   `;
 }

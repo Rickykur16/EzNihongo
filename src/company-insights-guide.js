@@ -11,7 +11,7 @@ export const INSIGHT_REQUIREMENTS = Object.freeze([
   { key:'learning', title:'Apakah siswa benar-benar belajar?', owner:'Academic + Product', source:'learning',
     available:'Kesulitan kuis per pelajaran dan completion pelajaran aktif tersedia dengan batas sampel.',
     needed:'Retensi pengetahuan setelah jeda, kesalahan per kompetensi, pre/post assessment sebanding. Perlu concept ID, versi materi/soal dan konteks review yang konsisten.',
-    decision:'Tentukan materi atau latihan yang perlu diperbaiki. XP dan nilai sekali mencoba bukan bukti penguasaan jangka panjang.' },
+    decision:'Tentukan materi atau latihan yang perlu diperbaiki. Nilai sekali mencoba belum cukup untuk menunjukkan penguasaan jangka panjang.' },
   { key:'journey', title:'Di mana perjalanan belajar terhambat?', owner:'Product + Operations', source:'heart',
     available:'Aktivasi berbasis enrollment dan kembali belajar antarminggu tersedia; bukan funnel lengkap.',
     needed:'Keberhasilan mulai/submit belajar, penggunaan fitur, titik keluar, feedback kemudahan dan kepuasan. Perlu event start/success/failure, exposure fitur dan survei sukarela.',

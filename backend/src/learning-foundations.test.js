@@ -16,7 +16,7 @@ import {
 
 function completionClient({ completed = false } = {}) {
   const progress = { completed };
-  const stats = { xp: 0, lessons: 0, minutes: 0 };
+  const stats = { xp: 123, lessons: 0, minutes: 0 };
   return {
     progress,
     stats,
@@ -30,9 +30,9 @@ function completionClient({ completed = false } = {}) {
         return { rows: [{ lesson_id: params[1] }], rowCount: 1 };
       }
       if (sql.includes('INSERT INTO user_stats')) {
-        stats.xp += params[1];
+        assert.doesNotMatch(sql, /\bxp\b/);
         stats.lessons += 1;
-        stats.minutes += params[2];
+        stats.minutes += params[1];
         return { rows: [], rowCount: 1 };
       }
       throw new Error(`Unexpected SQL: ${sql.slice(0, 60)}`);
@@ -40,15 +40,15 @@ function completionClient({ completed = false } = {}) {
   };
 }
 
-test('first completion transitions a pre-existing incomplete progress row and awards stats once', async () => {
+test('first completion records lessons and minutes once without changing historical XP', async () => {
   const client = completionClient({ completed: false });
   const first = await completeLessonWithStats(client, { userId: 'user', lessonId: 'lesson' });
   assert.deepEqual(first, { found: true, firstComplete: true });
-  assert.deepEqual(client.stats, { xp: 25, lessons: 1, minutes: 15 });
+  assert.deepEqual(client.stats, { xp: 123, lessons: 1, minutes: 15 });
 
   const duplicate = await completeLessonWithStats(client, { userId: 'user', lessonId: 'lesson' });
   assert.deepEqual(duplicate, { found: true, firstComplete: false });
-  assert.deepEqual(client.stats, { xp: 25, lessons: 1, minutes: 15 });
+  assert.deepEqual(client.stats, { xp: 123, lessons: 1, minutes: 15 });
 });
 
 test('legacy completion reconciliation is idempotent and never grants historical XP', async () => {
