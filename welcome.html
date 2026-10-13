@@ -8803,13 +8803,10 @@ function moduleIntroStepMeta(lesson) {
   if (type === 'kanji' && (lesson.kanji || []).length) parts.push(`${lesson.kanji.length} kanji`);
   if (type === 'kana' && (lesson.kana || []).length) parts.push(`${lesson.kana.length} huruf`);
   if ((type === 'text' || type === 'video') && (lesson.grammar || []).length) parts.push(`${lesson.grammar.length} pola`);
-  const duration = formatDurationLong(lesson.durationMinutes);
-  if (duration) parts.push(duration);
   return parts.join(' · ');
 }
 
 const MODULE_INTRO_ICONS = {
-  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
   topic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
 };
@@ -8839,7 +8836,6 @@ function renderModuleIntro(module) {
   if (/^n\d$/i.test(currentState.course || '')) chips.push(String(currentState.course).toUpperCase());
   if (module.cefrLevel) chips.push(`CEFR ${module.cefrLevel}`);
   const meta = [];
-  if (plan.totalMinutes) meta.push(`<span>${MODULE_INTRO_ICONS.clock}${escapeHtml(formatDurationLong(plan.totalMinutes))}</span>`);
   if (plan.lessons.length) meta.push(`<span>${MODULE_INTRO_ICONS.list}${plan.lessons.length} materi</span>`);
   if (module.jfTopic) meta.push(`<span>${MODULE_INTRO_ICONS.topic}Topik: ${escapeHtml(module.jfTopic)}</span>`);
   const ringOffset = (301.59 * (1 - plan.percent / 100)).toFixed(2);

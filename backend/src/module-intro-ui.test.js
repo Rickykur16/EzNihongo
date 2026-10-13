@@ -204,3 +204,14 @@ test('scenario steps become a flow and the ring animates once per module', () =>
   assert.match(first, /<div class="module-intro ">/);
   assert.match(context.renderModuleIntro(chapter), /<div class="module-intro no-anim">/);
 });
+
+test('summary does not show lesson or module durations', () => {
+  const timed = {
+    ...chapter,
+    totalMinutes: 109,
+    lessons: chapter.lessons.map((lesson) => ({ ...lesson, durationMinutes: 15 })),
+  };
+  const output = setupRenderer({ 'bab-12:kosakata': true }).renderModuleIntro(timed);
+  assert.doesNotMatch(output, /menit/);
+  assert.match(output, /Materi 2 dari 7 · Kanji · 2 kanji</);
+});
