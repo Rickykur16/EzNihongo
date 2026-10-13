@@ -1,0 +1,32 @@
+/* Core explanations need the same reading weight as the lesson body. */
+.learning-n5 .grammar-meaning,
+.learning-n5 .grammar-notes,
+.learning-n5 .gt-card__meaning,
+.learning-n5 .deck-hero .dh-body { font-size: 16px; line-height: 1.75; color: #40444c; font-style: normal; }
+.learning-n5 .grammar-pattern { font-size: 20px; line-height: 1.65; overflow-wrap: anywhere; }
+.learning-n5 .grammar-example { font-size: 20px; line-height: 1.8; }
+.learning-n5 .grammar-example-id,
+.learning-n5 .gk-line-id { font-size: 15px; line-height: 1.7; color: #50545c; font-style: normal; }
+.learning-n5 .grammar-notes p { margin: 8px 0; }
+.learning-n5 .grammar-notes p:first-child { margin-top: 0; }
+.learning-n5 .lesson-body { color: #40444c; }
+.learning-n5 .lesson-body p,
+.learning-n5 .lesson-body li { font-size: 16px; line-height: 1.75; max-width: 72ch; }
+.learning-n5 .lesson-body ul,
+.learning-n5 .lesson-body ol { padding-left: 24px; }
+.learning-n5 .lesson-body h3 { margin: 20px 0 10px; font-size: 19px; }
+.learning-n5 .lesson-body blockquote { margin: 14px 0; padding: 12px 16px; border-left: 3px solid #b83349; background: #faf5f3; }
+.learning-n5 .resource-unavailable { color: #50545c; font-size: 15px; line-height: 1.7; }
+.learning-n5 .module-intro-description { max-width: 72ch; }
+.learning-n5 .n5-test-rules { margin: 18px 0; color: #40444c; font-size: 16px; line-height: 1.75; }
+.learning-n5 .n5-test-rules ul { padding-left: 24px; }
+.learning-n5 .n5-number-table { overflow-x: auto; margin: 18px 0; }
+.learning-n5 .n5-number-table table { border-collapse: collapse; width: 100%; font-size: 16px; }
+.learning-n5 .n5-number-table th,
+.learning-n5 .n5-number-table td { border-bottom: 1px solid #ddd; padding: 12px; text-align: left; vertical-align: top; }
+.learning-n5 .n5-number-table [lang="ja"] { min-width: 220px; }
+@media (max-width: 600px) {
+  .learning-n5 .grammar-card { padding: 16px 14px; }
+  .learning-n5 .grammar-pattern { font-size: 19px; }
+  .learning-n5 .grammar-example { font-size: 19px; }
+}
