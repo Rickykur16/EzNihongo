@@ -27,28 +27,39 @@
 const OVERLAY = new URLSearchParams(location.search).has('overlay');
 if (OVERLAY) document.documentElement.style.background = document.body.style.background = 'transparent';
 // ---------------------------------------------------------------- naskah & waktu
+// "|" = batas potongan ucapan (jeda di VO asli). Waktu tiap potongan ada di SEGT.
 const VO = [
-  'Seratus lima puluh juta, cuma buat magang ke Jepang. Jangan sampai kamu orang berikutnya.',
-  'Nggak semua LPK semahal itu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.',
-  'Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.',
-  'Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.',
+  'Seratus lima puluh juta,|cuma buat magang ke Jepang.|Jangan sampai kamu orang berikutnya.',
+  'Nggak semua LPK semahal itu.|Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta.|Yang bikin membengkak biasanya ulah oknum.',
+  'Contohnya dana talangan.|Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.',
+  'Ada juga yang diminta jaminan sertifikat rumah.|Itu tanda bahaya.',
   'Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.',
-  'Atau pilih jalur lain: TG mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
-  'Mau dibimbing jalur TG mandiri? Klik link di bio.',
+  'Atau pilih jalur lain:|TG mandiri, tanpa LPK.|Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
+  'Mau dibimbing jalur TG mandiri?|Klik link di bio.',
 ];
 // Teks caption = VO, kecuali angka yang dibaca huruf ditampilkan sebagai angka.
 const CAP = [
-  'Rp150 juta, cuma buat magang ke Jepang. jangan sampai kamu orang berikutnya',
-  'nggak semua LPK semahal itu. menurut Kemnaker, rata-ratanya Rp25–35 juta. yang bikin membengkak biasanya ulah oknum',
-  'contohnya dana talangan. ada yang pinjam 80 juta, nyicilnya 6 juta lebih sebulan, selama 2 tahun',
-  'ada juga yang diminta jaminan sertifikat rumah. itu tanda bahaya',
+  'Rp150 juta,|cuma buat magang ke Jepang.|jangan sampai kamu orang berikutnya',
+  'nggak semua LPK semahal itu.|menurut Kemnaker, rata-ratanya Rp25–35 juta.|yang bikin membengkak biasanya ulah oknum',
+  'contohnya dana talangan.|ada yang pinjam 80 juta, nyicilnya 6 juta lebih sebulan, selama 2 tahun',
+  'ada juga yang diminta jaminan sertifikat rumah.|itu tanda bahaya',
   'jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis',
-  'atau pilih jalur lain: TG mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
-  'mau dibimbing jalur TG mandiri? klik link di bio',
+  'atau pilih jalur lain:|TG mandiri, tanpa LPK.|belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
+  'mau dibimbing jalur TG mandiri?|klik link di bio',
 ];
-// Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).
-let PARA = [0, 5.5, 14.0, 20.7, 24.7, 29.9, 37.3];
-let DUR = 41.2;
+// [mulai, selesai] tiap potongan ucapan, dari VO asli "Konten 13 oktober" (47,07 dtk) lewat
+// ffmpeg silencedetect=n=-38dB:d=0.25. Ganti kalau VO dibuat ulang.
+const SEGT = [
+  [[0, 1.74], [2.11, 3.59], [4.23, 6.88]],
+  [[7.56, 9.49], [9.89, 14.26], [14.67, 17.21]],
+  [[17.54, 19.09], [19.38, 24.80]],
+  [[25.12, 27.57], [27.88, 29.14]],
+  [[29.47, 34.98]],
+  [[35.26, 36.59], [36.88, 38.88], [39.13, 43.74]],
+  [[43.99, 45.63], [45.95, 47.07]],
+];
+let PARA = SEGT.map((p) => p[0][0]);
+let DUR = 47.6;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
@@ -60,11 +71,16 @@ const SCENES = [
   { p: 6, cue: null, f: cta },
 ];
 function paraEnd(p) { return p + 1 < PARA.length ? PARA[p + 1] : DUR; }
+// Waktu sebuah kata di VO: cari potongan ucapannya, lalu proporsi huruf di dalam potongan itu.
 function cueTime(p, word) {
   if (!word) return PARA[p];
-  const i = VO[p].indexOf(word);
-  const span = paraEnd(p) - PARA[p] - 0.5;
-  return PARA[p] + 0.1 + span * (i / VO[p].length);
+  const segs = VO[p].split('|');
+  for (let k = 0; k < segs.length; k++) {
+    const i = segs[k].indexOf(word); if (i < 0) continue;
+    const [a, b] = SEGT[p][k];
+    return a + (b - a) * (i / segs[k].length);
+  }
+  return PARA[p];
 }
 function sceneTimes() {
   return SCENES.map((s, i) => {
@@ -73,11 +89,12 @@ function sceneTimes() {
     return { ...s, a, b };
   });
 }
-// Potongan caption 1–3 kata, waktunya menurut proporsi huruf.
+// Potongan caption 1–3 kata per potongan ucapan, waktunya menurut proporsi huruf. Caption
+// terakhir sebuah potongan bertahan melewati jeda pendek (<0,8 dtk) supaya tidak berkedip.
 function captionChunks() {
   const out = [];
-  CAP.forEach((text, p) => {
-    const words = text.split(' ');
+  CAP.forEach((text, p) => text.split('|').forEach((seg, k) => {
+    const words = seg.split(' ');
     const chunks = []; let cur = [];
     words.forEach((w) => {
       cur.push(w);
@@ -86,13 +103,14 @@ function captionChunks() {
     });
     if (cur.length) chunks.push(cur.join(' '));
     const total = chunks.reduce((s, c) => s + c.length + 2, 0);
-    const a0 = PARA[p] + 0.08, span = paraEnd(p) - a0 - 0.35;
+    const [a0, b0] = SEGT[p][k], span = b0 - a0;
     let acc = 0;
     chunks.forEach((c) => {
       const a = a0 + span * acc / total; acc += c.length + 2;
-      out.push({ text: c.replace(/[.,]$/, ''), a, b: a0 + span * acc / total });
+      out.push({ text: c.replace(/[.,:]$/, ''), a, b: a0 + span * acc / total });
     });
-  });
+  }));
+  out.forEach((c, i) => { const n = out[i + 1]; if (n && n.a - c.b < .8) c.b = n.a; else c.b += .25; });
   return out;
 }
 
@@ -456,7 +474,6 @@ window.render = (T) => {
   const fl = PARA.slice(1).map((p) => P(T, p, p + .18)).find((x) => x > 0 && x < 1);
   if (fl !== undefined) { ctx.fillStyle = `rgba(255,255,255,${.85 * (1 - eOut(fl))})`; ctx.fillRect(0, 0, W, H); }
 };
-window.setTiming = (para, dur) => { if (para) PARA = para; if (dur) DUR = dur; init(); };
 function init() {
   window.__SCENES = sceneTimes(); window.__CAPS = captionChunks(); window.DUR = DUR;
   // Efek suara (sfx.py): kilatan & pop per adegan.
