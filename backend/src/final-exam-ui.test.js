@@ -15,7 +15,9 @@ test('final module stays after all sections in course transform without rearrang
  vm.runInContext(source('function transformCourseFromApi(', 'const QUIZ_CATEGORY_META'),ctx);
  const result=ctx.transformCourseFromApi({slug:'n5',modules:input});
  assert.deepEqual(Array.from(result.modules,m=>m.id),['b1','b2','extra','n5-final-exam']);
- assert.equal(result.modules.at(-1).sectionName,'Final Exam');
+ assert.equal(result.modules.at(-1).sectionName,'Ujian Akhir');
+ const n4=ctx.transformCourseFromApi({slug:'n4',modules:[{slug:'n4-final-exam'}]});
+ assert.equal(n4.modules[0].sectionName,'Final Exam');
  assert.equal(result.modules.at(-1).num,'04');
  assert.equal(input[1].slug,'n5-final-exam');
  const other=[{id:'renamed',quizSpec:{version:'jlpt-final-n4-v1'}},{id:'new-lesson'}];
