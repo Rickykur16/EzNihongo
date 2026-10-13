@@ -42,3 +42,17 @@ Catatan: (1) foto dari situs berita/blog belum tentu boleh dipakai ulang untuk i
 versi yang diposting, lebih aman ganti dengan foto Pexels yang mirip (kata kunci di tabel atas).
 (2) Uang di b1/b2 dolar, bukan rupiah. (3) Resolusi asli ±780 px tinggi → diperbesar ±2,5×,
 jadi agak lembut; butiran film + grade gelap menyamarkannya.
+
+## Versi 2 (13 Okt 2026): 4 foto diganti karena TikTok memberi label "AI-generated"
+
+Diduga dari foto b1/b2/b3/b6 versi pertama yang berciri gambar AI (video kita tanpa metadata
+C2PA, jadi label kemungkinan dari model deteksi TikTok). Diganti foto dari pemilik:
+
+| File | Isi baru | Catatan |
+|---|---|---|
+| b1 | tangan memegang uang Rp100.000 | judul "INDONESIA-ECONOMY-FOREX" = foto berita (gaya AFP/Getty), lisensi editorial, BUKAN untuk promosi; ganti foto Pexels kalau ada klaim |
+| b2 | serah terima uang dolar di bawah meja | stok ("Bribery, Hands passing money under ta…") |
+| b3 | pria Asia pusing memegang tagihan + kalkulator | stok ("Stressed Man Reviewing Bills and Calc…") |
+| b6 | pria menulis di meja malam, lampu & monitor | foto asli resolusi penuh (1200×1442); dicerahkan (gamma 0,6) & hijaunya dikurangi |
+
+Kalau label AI tetap muncul setelah ini, tersangka berikutnya suara ElevenLabs.
