@@ -24,35 +24,35 @@
 'use strict';
 // ---------------------------------------------------------------- naskah & waktu
 const VO = [
-  'Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.',
-  'Padahal menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Lewat jalur mandiri, biaya resminya mulai delapan jutaan.',
-  'Kok bisa membengkak? Pertama, pelatihan berbulan-bulan, plus asrama dan makan.',
-  'Kedua, dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma diterima lima puluh delapan, tapi nyicil enam juta lebih sebulan, selama dua tahun. Mau mundur? Kena denda.',
-  'Ketiga, calo dan jaminan, sampai sertifikat rumah. Itu tanda bahaya.',
-  'Mulai dua ribu dua puluh tujuh, Jepang berencana membatasi biaya yang ditanggung pekerja, maksimal dua bulan gaji.',
-  'Jadi kuncinya: bahasa. Makin cepat kamu bisa, makin sedikit yang perlu kamu bayar. Simpan video ini, dan komen "mulai" kalau mau belajar dari nol.',
+  'Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.',
+  'Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Tapi oknumnya ada. Cek empat hal ini.',
+  'Satu, cek izinnya di situs Binalattas Kemnaker.',
+  'Dua, minta rincian biaya tertulis. Jangan bayar besar di awal tanpa kontrak.',
+  'Tiga, baca kontrak dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma terima lima puluh delapan, tapi nyicil enam juta lebih sebulan, dua tahun.',
+  'Empat, jangan pernah serahkan sertifikat rumah sebagai jaminan.',
+  'Sambil itu, mulai belajar bahasanya dari sekarang. Makin siap kamu, makin susah dibohongi. Simpan, dan kirim ke teman yang mau ke Jepang.',
 ];
 // Teks caption = VO, kecuali angka yang dibaca huruf ditampilkan sebagai angka.
 const CAP = [
-  'ada yang ngaku bayar sampai Rp150 juta, cuma buat magang ke Jepang',
-  'padahal menurut Kemnaker, rata-ratanya Rp25–35 juta. lewat jalur mandiri, biaya resminya mulai 8 jutaan',
-  'kok bisa membengkak? pertama, pelatihan berbulan-bulan, plus asrama dan makan',
-  'kedua, dana talangan. ada yang ngaku pinjam 80 juta, cuma diterima 58, tapi nyicil 6 juta lebih sebulan, selama 2 tahun. mau mundur? kena denda',
-  'ketiga, calo dan jaminan, sampai sertifikat rumah. itu tanda bahaya',
-  'mulai 2027, Jepang berencana membatasi biaya yang ditanggung pekerja, maksimal 2 bulan gaji',
-  'jadi kuncinya: bahasa. makin cepat kamu bisa, makin sedikit yang perlu kamu bayar. simpan video ini, dan komen "mulai" kalau mau belajar dari nol',
+  'jangan buru-buru masuk LPK. ada yang ngaku bayar sampai Rp150 juta, cuma buat magang ke Jepang',
+  'nggak semua LPK begitu. menurut Kemnaker, rata-ratanya Rp25–35 juta. tapi oknumnya ada. cek 4 hal ini',
+  'satu, cek izinnya di situs Binalattas Kemnaker',
+  'dua, minta rincian biaya tertulis. jangan bayar besar di awal tanpa kontrak',
+  'tiga, baca kontrak dana talangan. ada yang ngaku pinjam 80 juta, cuma terima 58, tapi nyicil 6 juta lebih sebulan, 2 tahun',
+  'empat, jangan pernah serahkan sertifikat rumah sebagai jaminan',
+  'sambil itu, mulai belajar bahasanya dari sekarang. makin siap kamu, makin susah dibohongi. simpan, dan kirim ke teman yang mau ke Jepang',
 ];
 // Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).
-let PARA = [0, 4.8, 12.6, 16.6, 26.2, 30.0, 35.8];
-let DUR = 45.2;
+let PARA = [0, 6.6, 15.4, 18.4, 23.2, 32.7, 36.0];
+let DUR = 44.6;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
   { p: 1, cue: null, f: bars },
-  { p: 2, cue: null, f: training },
-  { p: 3, cue: null, f: loan },
-  { p: 4, cue: null, f: broker },
-  { p: 5, cue: null, f: globe },
+  { p: 2, cue: null, f: izin },
+  { p: 3, cue: null, f: rincian },
+  { p: 4, cue: null, f: loan },
+  { p: 5, cue: null, f: broker },
   { p: 6, cue: null, f: keyword },
   { p: 6, cue: 'Simpan', f: cta },
 ];
@@ -193,11 +193,13 @@ function billRain(t, seed, n, { speed = 1, alpha = 1, scale = 1 } = {}) {
 // 1. Hook: angka besar SUDAH penuh di frame 0 (pelajaran video pertama: penonton pergi di 0:02).
 // Komentar = screenshot asli dari pemilik (komentar TikTok), avatar, nama akun, dan nama
 // LPK/daerah DIPIKSELKAN sebelum dipakai (komentar-1..3.jpg). Muncul satu per satu.
-const SHOTS = [['km1', 0], ['km2', .9], ['km3', 1.8]];
-function shot(id, x, y, k, rot) {
-  const img = document.getElementById(id); const w = 900, h = w * img.naturalHeight / img.naturalWidth;
-  ctx.save(); ctx.globalAlpha *= clamp(k * 2); ctx.translate(x, y + (1 - eOut(k)) * 50); ctx.rotate(rot);
-  const s = .85 + .15 * back(k); ctx.scale(s, s);
+// Menumpuk: tiap komentar baru jatuh dari bawah, menutupi tepi komentar sebelumnya, dan yang di
+// bawahnya ikut terdorong sedikit (hentakan).
+const SHOTS = [['km1', 0, 875, -.015, -20], ['km2', 1.0, 1068, .02, 25], ['km3', 2.0, 1264, -.012, -15], ['km4', 3.0, 1431, .018, 20]];
+function shot(id, x, y, k, rot, drop = 50, s0 = .85, w = 900) {
+  const img = document.getElementById(id); const h = w * img.naturalHeight / img.naturalWidth;
+  ctx.save(); ctx.globalAlpha *= clamp(k * 2); ctx.translate(x, y + (1 - eOut(k)) * drop); ctx.rotate(rot * (1 + 3 * (1 - eOut(k))));
+  const s = s0 + (1 - s0) * back(k); ctx.scale(s, s);
   ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 40; ctx.fillStyle = '#fff'; rrect(-w / 2 - 14, -h / 2 - 14, w + 28, h + 28, 22); ctx.fill(); ctx.shadowBlur = 0;
   ctx.save(); rrect(-w / 2, -h / 2, w, h, 12); ctx.clip(); ctx.drawImage(img, -w / 2, -h / 2, w, h); ctx.restore();
   ctx.restore();
@@ -213,29 +215,42 @@ function hook(lt, d) {
   text('Rp150 JUTA', W / 2 + sh, 500, { w: 900, px: 172, color: GOLD, shadow: 30 });
   text('buat magang ke Jepang?!', W / 2, 650, { w: 800, px: 62, shadow: 20 });
   // screenshot komentar muncul satu per satu (yang pertama sudah ada sejak frame 0)
-  SHOTS.forEach(([id, a], i) => { const k = i === 0 ? 1 : P(lt, a, a + .35); if (k) shot(id, W / 2 + (i % 2 ? 25 : -20), 905 + i * 245, k, (i % 2 ? .02 : -.015)); });
+  SHOTS.forEach(([id, a, y, rot, dx], i) => {
+    const k = i === 0 ? 1 : P(lt, a, a + .32); if (!k) return;
+    // hentakan saat komentar berikutnya mendarat
+    let bump = 0; SHOTS.slice(i + 1).forEach(([, b]) => { const q = P(lt, b + .2, b + .45); if (q > 0 && q < 1) bump += Math.sin(q * Math.PI) * 10; });
+    shot(id, W / 2 + dx, y + bump, k, rot, 260, 1.15, 800);
+  });
   text('screenshot komentar TikTok · identitas disamarkan', W / 2, 725, { w: 600, px: 28, color: 'rgba(255,255,255,.75)' });
 }
 
-// 2. Tiga batang: mandiri ±8 jt, rata-rata Kemnaker 25–35 jt, pengakuan ±150 jt.
+// 2. Dua batang: rata-rata Kemnaker 25–35 jt vs pengakuan ±150 jt, lalu "oknumnya ada" + "cek 4 hal".
 function bars(lt, d) {
   bgGlow('rgba(120,20,25,.5)', 'rgba(30,5,5,.4)', W / 2, 900, 1100);
   dust(lt, 5, 'rgba(255,190,190,', 40);
+  const kc = P(lt, cueTime(1, 'Cek') - PARA[1], cueTime(1, 'Cek') - PARA[1] + .3);
+  ctx.save(); ctx.globalAlpha = 1 - .85 * kc;
   chip('BIAYA MAGANG KE JEPANG', W / 2, 260, { px: 50, bg: '#fff', color: '#111' });
-  const base = 1500, maxH = 980, top = 150;
+  const base = 1370, maxH = 760, top = 150;
   const B = [
-    { x: 200, v: 8.6, lab: '± 8 jt', name: 'MANDIRI', sub: 'biaya resmi', c1: TEAL, c2: '#167b78', a: 2.4 },
-    { x: 540, v: 30, lab: 'Rp25–35 jt', name: 'RATA-RATA', sub: 'magang (Kemnaker)', c1: GOLD, c2: '#8a6418', a: .2 },
-    { x: 880, v: 150, lab: '± 150 jt', name: 'PENGAKUAN', sub: 'warganet', c1: '#ff4d52', c2: '#7a0c10', a: 1.1 },
+    { x: 330, v: 30, lab: 'Rp25–35 jt', name: 'RATA-RATA', sub: 'menurut Kemnaker', c1: GOLD, c2: '#8a6418', a: .2 },
+    { x: 750, v: 150, lab: '± 150 jt', name: 'PENGAKUAN', sub: 'warganet', c1: '#ff4d52', c2: '#7a0c10', a: 1.1 },
   ];
   B.forEach((b) => {
     const k = eOut(P(lt, b.a, b.a + .7)); const h = maxH * (b.v / top) * k;
     const g = ctx.createLinearGradient(0, base - h, 0, base); g.addColorStop(0, b.c1); g.addColorStop(1, b.c2);
-    ctx.fillStyle = g; rrect(b.x - 110, base - h, 220, Math.max(h, 1), 12); ctx.fill();
-    text(b.lab, b.x, base - h - 55, { w: 900, px: 54, color: b === B[2] ? '#fff' : b.c1, alpha: clamp(k * 3), shadow: 20 });
+    ctx.fillStyle = g; rrect(b.x - 130, base - h, 260, Math.max(h, 1), 12); ctx.fill();
+    text(b.lab, b.x, base - h - 55, { w: 900, px: 54, color: b === B[1] ? '#fff' : b.c1, alpha: clamp(k * 3), shadow: 20 });
     text(b.name, b.x, base + 55, { w: 800, px: 36, alpha: clamp(k * 3) });
     text(b.sub, b.x, base + 100, { w: 600, px: 28, color: 'rgba(255,255,255,.65)', alpha: clamp(k * 3) });
   });
+  ctx.restore();
+  const ko = cueTime(1, 'Tapi') - PARA[1];
+  if (!kc) popIn(lt, ko, (s) => scaled(W / 2, 400, s, () => chip('TAPI OKNUMNYA ADA', W / 2, 400, { px: 56 })));
+  if (kc) {
+    scaled(W / 2, 760, .8 + .2 * back(kc), () => text('CEK 4 HAL', W / 2, 760, { w: 900, px: 150, alpha: clamp(kc * 2), shadow: 30 }));
+    chip('sebelum bayar apa pun', W / 2, 920, { px: 46, bg: '#fff', color: '#111', alpha: P(lt, ko + 1, ko + 1.3) || clamp(kc * 2) });
+  }
 }
 
 // Kepala bagian (01/02/03) di atas.
@@ -286,12 +301,77 @@ function drawIcon(kind, cx, cy, k, label) {
   text(label, cx, cy + 180, { w: 800, px: 44, alpha: clamp(k * 2) });
 }
 
-// 4. Dana talangan: screenshot pengakuan (pinjam 80, terima 58, cicil 6 jt+ x 24 bulan), lalu
+function tick(x, y, r, ok, k) {
+  ctx.save(); ctx.globalAlpha *= k; ctx.fillStyle = ok ? TEAL : RED; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = r * .22; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+  if (ok) { ctx.moveTo(x - r * .45, y); ctx.lineTo(x - r * .1, y + r * .38); ctx.lineTo(x + r * .48, y - r * .35); }
+  else { ctx.moveTo(x - r * .38, y - r * .38); ctx.lineTo(x + r * .38, y + r * .38); ctx.moveTo(x + r * .38, y - r * .38); ctx.lineTo(x - r * .38, y + r * .38); }
+  ctx.stroke(); ctx.restore();
+}
+// Nama lembaga sengaja tidak ditulis: blok abu-abu sebagai pengganti.
+function nameBars(x, y, alpha) { ctx.fillStyle = `rgba(255,255,255,${.35 * alpha})`; rrect(x, y - 16, 230, 32, 10); ctx.fill(); rrect(x + 245, y - 16, 120, 32, 10); ctx.fill(); }
+
+// 3. Cek izin: kolom pencarian situs Binalattas Kemnaker, hasil terdaftar vs tidak ditemukan.
+function izin(lt, d) {
+  bgGlow('rgba(40,120,130,.5)', 'rgba(5,30,35,.4)', W / 2, 860, 1100);
+  dust(lt, 13, 'rgba(180,255,250,', 45);
+  header('01', 'CEK IZIN LPK', lt, '#167b78');
+  const kb = eOut(P(lt, .15, .45));
+  ctx.save(); ctx.globalAlpha = kb; ctx.translate(0, (1 - kb) * 40);
+  ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 30; ctx.fillStyle = '#fff'; rrect(90, 470, 900, 110, 55); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(160, 518, 22, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(176, 534); ctx.lineTo(196, 554); ctx.stroke();
+  const url = 'binalattas.kemnaker.go.id', nc = Math.floor(P(lt, .35, 1.0) * url.length);
+  text(url.slice(0, nc) + (lt < 1.3 && Math.floor(lt * 4) % 2 ? '|' : ''), 225, 527, { w: 600, px: 44, color: '#222', align: 'left' });
+  ctx.restore();
+  const rows = [[680, true, 'TERDAFTAR', 1.05], [870, false, 'TIDAK DITEMUKAN', 1.45]];
+  rows.forEach(([y, ok, lab, a]) => {
+    const k = eOut(P(lt, a, a + .3)); if (!k) return;
+    ctx.save(); ctx.globalAlpha = k; ctx.translate((1 - k) * 80, 0);
+    ctx.fillStyle = 'rgba(0,0,0,.5)'; rrect(90, y, 900, 150, 20); ctx.fill();
+    nameBars(150, y + 52, 1);
+    text(lab, 150, y + 108, { w: 800, px: 40, color: ok ? TEAL : '#ff6b6f', align: 'left' });
+    tick(915, y + 75, 42, ok, 1);
+    ctx.restore();
+  });
+  popIn(lt, 1.9, (s) => scaled(W / 2, 1170, s, () => chip('nggak terdaftar? jangan daftar', W / 2, 1170, { px: 46, bg: '#fff', color: '#111' })));
+}
+
+// 4. Rincian biaya tertulis: kertas rincian, tiap pos dicentang, lalu peringatan tanpa kontrak.
+function rincian(lt, d) {
+  bgGlow('rgba(200,140,40,.45)', 'rgba(60,35,5,.4)', W / 2, 900, 1150);
+  dust(lt, 11, 'rgba(255,220,150,', 50);
+  header('02', 'RINCIAN TERTULIS', lt);
+  const k = eOut(P(lt, .1, .45));
+  ctx.save(); ctx.globalAlpha = k; ctx.translate(W / 2, 800 + (1 - k) * 60); ctx.rotate(-.02);
+  ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 40; ctx.fillStyle = CREAM; rrect(-340, -330, 680, 660, 16); ctx.fill(); ctx.shadowBlur = 0;
+  text('RINCIAN BIAYA', 0, -260, { w: 900, px: 46, color: '#222' });
+  ctx.fillStyle = '#c9bfa8'; ctx.fillRect(-280, -215, 560, 4);
+  const items = ['pelatihan & asrama', 'paspor, visa, medical', 'dana talangan & bunga', 'syarat kalau mundur'];
+  items.forEach((it, i) => {
+    const ki = P(lt, .5 + i * .3, .75 + i * .3); if (!ki) return;
+    const y = -140 + i * 110;
+    ctx.save(); ctx.globalAlpha *= ki;
+    text(it, -280, y, { w: 700, px: 38, color: '#333', align: 'left' });
+    ctx.fillStyle = '#999'; for (let x = 0; x < 6; x++) ctx.fillRect(-280 + x * 22, y + 34, 12, 4);
+    ctx.restore();
+    tick(300, y, 26, true, ki);
+  });
+  text('tanda tangan kedua pihak', 0, 285, { w: 600, px: 28, color: '#777' });
+  ctx.restore();
+  const kw = cueTime(3, 'Jangan') - PARA[3];
+  popIn(lt, kw, (s) => scaled(W / 2, 1300, s, () => {
+    chip('TANPA KONTRAK?', W / 2, 1270, { px: 54, bg: '#111' });
+    chip('JANGAN BAYAR BESAR', W / 2, 1380, { px: 58 });
+  }));
+}
+
+// 5. Dana talangan: screenshot pengakuan (pinjam 80, terima 58, cicil 6 jt+ x 24 bulan), lalu
 // 24 kotak bulan dicoret satu per satu dan total cicilannya.
 function loan(lt, d) {
   bgGlow('rgba(60,60,90,.55)', 'rgba(10,10,25,.4)', W / 2, 860, 1100);
   dust(lt, 17, 'rgba(200,210,255,', 45);
-  header('02', 'DANA TALANGAN', lt);
+  header('03', 'DANA TALANGAN', lt);
   const ks = P(lt, .3, .65); if (ks) shot('km4', W / 2, 545, ks, -.012);
   const n = Math.floor(clamp((lt - 1.4) / (d * .55)) * 24);
   for (let i = 0; i < 24; i++) {
@@ -303,17 +383,16 @@ function loan(lt, d) {
   const ka = P(lt, 1.2, 1.5);
   text(`Rp${n * 6} jt+`, W / 2, 1180, { w: 900, px: 120, color: GOLD, shadow: 30, alpha: ka });
   text('total cicilan · padahal yang diterima cuma Rp58 jt', W / 2, 1285, { w: 600, px: 30, color: 'rgba(255,255,255,.75)', alpha: ka });
-  const kd = cueTime(3, 'Mau mundur') - PARA[3];
-  popIn(lt, kd, (s) => scaled(W / 2, 1420, s, () => chip('MUNDUR? KENA DENDA', W / 2, 1420, { px: 50 })));
+  popIn(lt, d - 2.2, (s) => scaled(W / 2, 1420, s, () => chip('baca dulu sebelum tanda tangan', W / 2, 1420, { px: 44, bg: '#fff', color: '#111' })));
 }
 
-// 6. Calo: siluet bertopi, tangan meminta uang, tanda bahaya.
+// 6. Jaminan: siluet bertopi memegang sertifikat rumah, tanda bahaya.
 function broker(lt, d) {
   ctx.fillStyle = '#070303'; ctx.fillRect(0, 0, W, H);
   const pulse = .5 + .5 * Math.sin(lt * 7);
   const g = ctx.createRadialGradient(W / 2, 760, 50, W / 2, 760, 900);
   g.addColorStop(0, `rgba(200,20,25,${.55 + .15 * pulse})`); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  header('03', 'CALO & JAMINAN', lt, '#111');
+  header('04', 'JAMINAN', lt, '#111');
   // siluet
   const k = eOut(P(lt, 0, .6));
   ctx.save(); ctx.translate(W / 2, 1180 + (1 - k) * 80); ctx.globalAlpha = k; ctx.fillStyle = '#000';
@@ -346,66 +425,22 @@ function broker(lt, d) {
   }
 }
 
-// 7. Globe: Indonesia → Jepang, 2027.
-const DOTS = (() => { const r = rnd(4242), a = []; for (let i = 0; i < 1400; i++) { const u = r() * 2 - 1, th = r() * Math.PI * 2; a.push([Math.asin(u), th]); } return a; })();
-function project(lat, lon, rot, R, cx, cy) {
-  const la = lat, lo = lon + rot, tilt = -.35;
-  let x = Math.cos(la) * Math.sin(lo), y = Math.sin(la), z = Math.cos(la) * Math.cos(lo);
-  const y2 = y * Math.cos(tilt) - z * Math.sin(tilt), z2 = y * Math.sin(tilt) + z * Math.cos(tilt);
-  return [cx + x * R, cy - y2 * R, z2];
-}
-function globe(lt, d) {
-  ctx.fillStyle = '#02060a'; ctx.fillRect(0, 0, W, H);
-  const cx = W / 2, cy = 900, R = 470 + lt * 6;
-  const halo = ctx.createRadialGradient(cx, cy, R * .8, cx, cy, R * 1.35);
-  halo.addColorStop(0, 'rgba(56,214,208,.25)'); halo.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = halo; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#04151a'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
-  const rot = -2.3 + lt * .07; const deg = Math.PI / 180;
-  // garis lintang/bujur
-  ctx.strokeStyle = 'rgba(56,214,208,.32)'; ctx.lineWidth = 2;
-  for (let lat = -60; lat <= 60; lat += 30) { ctx.beginPath(); let st = false; for (let lo = 0; lo <= 360; lo += 4) { const [x, y, z] = project(lat * deg, lo * deg, rot, R, cx, cy); if (z > 0) { st ? ctx.lineTo(x, y) : ctx.moveTo(x, y); st = true; } else st = false; } ctx.stroke(); }
-  for (let lo = 0; lo < 360; lo += 30) { ctx.beginPath(); let st = false; for (let lat = -90; lat <= 90; lat += 4) { const [x, y, z] = project(lat * deg, lo * deg, rot, R, cx, cy); if (z > 0) { st ? ctx.lineTo(x, y) : ctx.moveTo(x, y); st = true; } else st = false; } ctx.stroke(); }
-  // titik data
-  for (const [la, lo] of DOTS) { const [x, y, z] = project(la, lo, rot, R, cx, cy); if (z <= 0) continue; ctx.fillStyle = `rgba(90,235,230,${.25 + .7 * z})`; ctx.fillRect(x - 2, y - 2, 4, 4); }
-  // busur Jakarta → Tokyo
-  const A = [-6.2 * deg, 106.8 * deg], B = [35.7 * deg, 139.7 * deg];
-  const kk = eIO(P(lt, .4, 1.9)); const pts = [];
-  for (let i = 0; i <= 60; i++) {
-    const f = i / 60; const la = A[0] + (B[0] - A[0]) * f, lo = A[1] + (B[1] - A[1]) * f;
-    const [x, y, z] = project(la, lo, rot, R * (1 + .18 * Math.sin(Math.PI * f)), cx, cy); pts.push([x, y, z]);
-  }
-  ctx.save(); ctx.shadowColor = TEAL; ctx.shadowBlur = 20; ctx.strokeStyle = '#bffcf8'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  ctx.beginPath(); pts.slice(0, Math.max(1, Math.round(60 * kk)) + 1).forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); ctx.restore();
-  for (const [p, lab] of [[pts[0], 'Indonesia'], [pts[60], 'Jepang']]) {
-    if (p === pts[60] && kk < 1) continue;
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p[0], p[1], 10 + 3 * Math.sin(lt * 5), 0, 7); ctx.fill();
-    text(lab, p[0], p[1] - 44, { w: 800, px: 34, shadow: 12 });
-  }
-  // keterangan
-  popIn(lt, .1, (s) => scaled(W / 2, 300, s, () => text('2027', W / 2, 300, { w: 900, px: 170, color: TEAL, shadow: 30 })));
-  popIn(lt, 2.2, (s) => scaled(W / 2, 1330, s, () => {
-    chip('biaya ditanggung pekerja', W / 2, 1300, { px: 46, bg: '#fff', color: '#111' });
-    chip('MAKS. 2 BULAN GAJI', W / 2, 1400, { px: 60 });
-  }));
-  text('rencana aturan program pengganti magang (Ikusei Shūrō)', W / 2, 1480, { w: 600, px: 28, color: 'rgba(255,255,255,.7)', alpha: P(lt, 2.6, 3) });
-}
-
 // 8. Kata kunci: BAHASA.
 function keyword(lt, d) {
   bgGlow('rgba(255,190,90,.5)', 'rgba(90,40,5,.35)', W / 2, 820, 1150);
   rays(lt, W / 2, 820, 'rgba(255,220,150,.9)', 18, .14);
   dust(lt, 23, 'rgba(255,235,190,', 80);
-  text('kuncinya cuma satu', W / 2, 600, { w: 800, px: 56, alpha: P(lt, 0, .25), shadow: 20 });
+  text('sambil itu, mulai dari', W / 2, 600, { w: 800, px: 56, alpha: P(lt, 0, .25), shadow: 20 });
   const k = P(lt, .55, .85);
   if (k) {
     const s = 1.6 - .6 * eOut(k);
     scaled(W / 2, 800, s, () => text('BAHASA', W / 2, 800, { w: 900, px: 200, alpha: k, shadow: 40 }));
     ctx.fillStyle = RED; ctx.fillRect(W / 2 - 320 * eOut(P(lt, .85, 1.2)), 920, 640 * eOut(P(lt, .85, 1.2)), 16);
   }
-  text('makin cepat bisa, makin murah jalannya', W / 2, 1020, { w: 700, px: 40, alpha: P(lt, 1.6, 2), shadow: 16 });
+  text('makin siap kamu, makin susah dibohongi', W / 2, 1020, { w: 700, px: 40, alpha: P(lt, 1.6, 2), shadow: 16 });
 }
 
-// 9. Penutup: logo + simpan + komen MULAI.
+// 9. Penutup: logo + simpan + kirim ke teman.
 function cta(lt, d) {
   bgGlow('rgba(255,255,255,.12)', 'rgba(40,40,40,.25)', W / 2, 760, 1000);
   dust(lt, 31, 'rgba(255,255,255,', 40);
@@ -414,8 +449,8 @@ function cta(lt, d) {
   ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 40; ctx.fillStyle = CREAM; rrect(-330, -150, 660, 300, 18); ctx.fill(); ctx.shadowBlur = 0;
   const lg = document.getElementById('logo'); ctx.drawImage(lg, -260, -130, 520, 260); ctx.restore();
   popIn(lt, .5, (s) => scaled(W / 2, 860, s, () => text('simpan video ini', W / 2, 860, { w: 800, px: 56 })));
-  popIn(lt, 1.0, (s) => scaled(W / 2, 1000, s, () => chip('komen "MULAI"', W / 2, 1000, { px: 80 })));
-  text('kalau mau belajar dari nol', W / 2, 1120, { w: 700, px: 40, alpha: P(lt, 1.4, 1.8) });
+  popIn(lt, 1.0, (s) => scaled(W / 2, 1000, s, () => chip('KIRIM KE TEMAN', W / 2, 1000, { px: 80 })));
+  text('yang mau ke Jepang', W / 2, 1120, { w: 700, px: 40, alpha: P(lt, 1.4, 1.8) });
 }
 
 // ---------------------------------------------------------------- caption & render
