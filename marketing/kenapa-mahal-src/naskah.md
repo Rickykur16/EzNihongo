@@ -1,4 +1,4 @@
-# Naskah: "Jangan buru-buru masuk LPK" (±43 detik)
+# Naskah: "Jangan buru-buru masuk LPK" (±42 detik)
 
 Gaya: tanpa wajah. Suara ElevenLabs v4 + B-roll gerak sinematik + teks per kata di tengah
 (mengikuti video referensi pemilik, 13 Okt 2026). Arah isi (pemilik, 13 Okt 2026): himbauan
@@ -15,7 +15,7 @@ Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta,
 
 Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.
 
-Contohnya dana talangan. Ada yang pinjam delapan puluh juta, cair cuma lima puluh delapan, nyicilnya enam juta sebulan, dua tahun.
+Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.
 
 Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.
 
@@ -28,7 +28,7 @@ Mau dibimbing jalur SSW mandiri? Klik link di bio.
 
 ## Sumber & dasar klaim (dicek 13 Okt 2026)
 
-- "Sampai 150 juta", "pinjam 80 diterima 58, cicil 6 juta lebih sebulan selama 2 tahun", "jaminan sertifikat rumah": PENGAKUAN
+- "Sampai 150 juta", "pinjam 80, cicil 6 juta lebih sebulan selama 2 tahun" ("keterima 58" di komentar ambigu, tidak dipakai), "jaminan sertifikat rumah": PENGAKUAN
   warganet di komentar TikTok (screenshot dari pemilik), BUKAN data resmi. Naskah memakai
   "ada yang ngaku" / "ada yang", layar menulis "pengakuan warganet". Nama akun & nama LPK di
   komentar SENGAJA tidak ditampilkan. Hook memakai SCREENSHOT asli (permintaan pemilik), dipotong

@@ -30,7 +30,7 @@ if (OVERLAY) document.documentElement.style.background = document.body.style.bac
 const VO = [
   'Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.',
   'Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.',
-  'Contohnya dana talangan. Ada yang pinjam delapan puluh juta, cair cuma lima puluh delapan, nyicilnya enam juta sebulan, dua tahun.',
+  'Contohnya dana talangan. Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.',
   'Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.',
   'Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.',
   'Atau pilih jalur lain: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
@@ -40,15 +40,15 @@ const VO = [
 const CAP = [
   'jangan buru-buru masuk LPK. ada yang ngaku bayar sampai Rp150 juta, cuma buat magang ke Jepang',
   'nggak semua LPK begitu. menurut Kemnaker, rata-ratanya Rp25–35 juta. yang bikin membengkak biasanya ulah oknum',
-  'contohnya dana talangan. ada yang pinjam 80 juta, cair cuma 58, nyicilnya 6 juta sebulan, 2 tahun',
+  'contohnya dana talangan. ada yang pinjam 80 juta, nyicilnya 6 juta lebih sebulan, selama 2 tahun',
   'ada juga yang diminta jaminan sertifikat rumah. itu tanda bahaya',
   'jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis',
   'atau pilih jalur lain: SSW mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
   'mau dibimbing jalur SSW mandiri? klik link di bio',
 ];
 // Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).
-let PARA = [0, 7.0, 15.1, 22.9, 27.0, 32.1, 39.5];
-let DUR = 42.9;
+let PARA = [0, 7.0, 15.1, 22.2, 26.3, 31.4, 38.8];
+let DUR = 42.2;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
@@ -299,13 +299,14 @@ function izin(lt, d) {
   }));
 }
 
-// 3. Dana talangan: screenshot pengakuan (pinjam 80, cair 58, cicil 6 jt x 24 bulan). Sengaja
+// 3. Dana talangan: screenshot pengakuan (pinjam 80, cicil 6 jt+ x 24 bulan). "keterima 58" di
+// komentar ambigu (cair 58? bayar 58 setelah diterima kerja?), jadi sengaja tidak dipakai. Sengaja
 // cepat (pemilik: bagian ini dulu membosankan): 24 kotak terisi makin cepat dalam ±1,5 dtk,
 // total menghantam dengan hentakan + kilat merah, lalu langsung pesan "baca dulu". Waktu
-// diikat ke kata VO: "cair" -> baris pinjam/cair, "nyicilnya" -> kotak mulai terisi.
+// diikat ke kata VO: "pinjam" -> Rp80 jt, "nyicilnya" -> kotak mulai terisi.
 const loanHit = () => cueTime(2, 'nyicilnya') - PARA[2] + 1.5;
 function loan(lt, d) {
-  const LOAN_HIT = loanHit(), kc = cueTime(2, 'cair') - PARA[2];
+  const LOAN_HIT = loanHit();
   bgGlow('rgba(60,60,90,.55)', 'rgba(10,10,25,.4)', W / 2, 860, 1100);
   dust(lt, 17, 'rgba(200,210,255,', 45);
   const shake = lt > LOAN_HIT && lt < LOAN_HIT + .35 ? Math.sin(lt * 90) * 14 * (1 - (lt - LOAN_HIT) / .35) : 0;
@@ -324,11 +325,10 @@ function loan(lt, d) {
   const kp = cueTime(2, 'pinjam') - PARA[2];
   if (!n) {
     popIn(lt, kp, (s) => scaled(W / 2, 1100, s, () => text('pinjam Rp80 jt', W / 2, 1100, { w: 900, px: 64, shadow: 20 })));
-    popIn(lt, kc, (s) => scaled(W / 2, 1190, s, () => text('cair cuma Rp58 jt', W / 2, 1190, { w: 900, px: 64, color: GOLD, shadow: 20 })));
   }
   const ka = n ? 1 : 0, big = hit > 0 ? 1 + .25 * (1 - eOut(hit)) : 1;
-  scaled(W / 2, 1180, big, () => text(`Rp${n * 6} jt`, W / 2, 1180, { w: 900, px: 120, color: hit > 0 ? '#ff5a5f' : GOLD, shadow: 30, alpha: ka }));
-  text('total cicilan · padahal yang cair cuma Rp58 jt', W / 2, 1285, { w: 600, px: 30, color: 'rgba(255,255,255,.8)', alpha: P(lt, LOAN_HIT + .2, LOAN_HIT + .5) });
+  scaled(W / 2, 1180, big, () => text(`Rp${n * 6} jt+`, W / 2, 1180, { w: 900, px: 120, color: hit > 0 ? '#ff5a5f' : GOLD, shadow: 30, alpha: ka }));
+  text('total cicilan 24 bulan · pinjamannya Rp80 jt', W / 2, 1285, { w: 600, px: 30, color: 'rgba(255,255,255,.8)', alpha: P(lt, LOAN_HIT + .2, LOAN_HIT + .5) });
   ctx.restore();
   popIn(lt, LOAN_HIT + 1.1, (s) => scaled(W / 2, 1420, s, () => chip('baca dulu sebelum tanda tangan', W / 2, 1420, { px: 44, bg: '#fff', color: '#111' })));
 }
