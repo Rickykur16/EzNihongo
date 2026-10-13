@@ -1,0 +1,517 @@
+[
+  {
+    "character": "先",
+    "meaning": "lebih dahulu",
+    "mnemonic": "Bayangkan dua kaki di bawah melangkah mengikuti penunjuk bercabang di atasnya. Orang yang membawa penunjuk itu bergerak lebih dahulu."
+  },
+  {
+    "character": "生",
+    "meaning": "hidup",
+    "mnemonic": "Bayangkan sebatang tanaman hidup. Garis bawah menjadi tanah, garis tegak menjadi batang, dan garis-garis atas menjadi daun yang tumbuh."
+  },
+  {
+    "character": "学",
+    "meaning": "belajar",
+    "mnemonic": "Bayangkan anak 子 belajar di bawah atap kecil. Tiga goresan di atasnya menjadi percikan ide saat ia memahami pelajaran."
+  },
+  {
+    "character": "校",
+    "meaning": "sekolah",
+    "mnemonic": "Bayangkan pohon 木 di kiri sebagai penanda halaman sekolah. Di kanan, seorang murid bertopi merentangkan tangan dan menyilangkan kaki sambil menunggu bel masuk."
+  },
+  {
+    "character": "国",
+    "meaning": "negara",
+    "mnemonic": "Bayangkan batu permata 玉 dilindungi tembok persegi di sekelilingnya. Seluruh wilayah di dalam tembok itu adalah sebuah negara."
+  },
+  {
+    "character": "名",
+    "meaning": "nama",
+    "mnemonic": "Bayangkan bentuk bulan sabit di atas mulut 口. Dalam gelap, mulut itu menyebutkan nama agar orang lain mengenalinya."
+  },
+  {
+    "character": "人",
+    "meaning": "orang",
+    "mnemonic": "Bayangkan seseorang berdiri dengan kedua kaki terbuka. Dua garis yang bertemu di atas membentuk seorang manusia."
+  },
+  {
+    "character": "語",
+    "meaning": "bahasa",
+    "mnemonic": "Bayangkan mulut 口 di kanan bawah mengucapkan lima 五 kata. Kata-katanya 言 berderet di kiri, membentuk sebuah bahasa."
+  },
+  {
+    "character": "何",
+    "meaning": "apa",
+    "mnemonic": "Bayangkan orang 亻 di kiri menatap mulut 口 di kanan yang dinaungi garis berkait. Ia kebingungan lalu bertanya, 'Apa?'"
+  },
+  {
+    "character": "魚",
+    "meaning": "ikan",
+    "mnemonic": "Bayangkan seekor ikan berdiri tegak. Kepala kecilnya berada di atas, tubuh berpetak di tengah, dan empat sirip pendek berjajar di bawah."
+  },
+  {
+    "character": "本",
+    "meaning": "buku atau pangkal",
+    "mnemonic": "Bayangkan pohon 木 dengan pangkal batang ditandai satu garis pendek. Kayu dari pohon itu dijadikan kertas untuk membuat buku."
+  },
+  {
+    "character": "花",
+    "meaning": "bunga",
+    "mnemonic": "Bayangkan dua tunas 艹 di atas orang 亻 dan sendok berbentuk 匕. Ia menyiram tunas dengan sendok sampai tumbuh bunga."
+  },
+  {
+    "character": "一",
+    "meaning": "satu",
+    "mnemonic": "Bayangkan sebatang lidi diletakkan mendatar. Hanya ada satu lidi."
+  },
+  {
+    "character": "二",
+    "meaning": "dua",
+    "mnemonic": "Bayangkan dua batang lidi ditumpuk mendatar. Satu di atas dan satu di bawah, jumlahnya dua."
+  },
+  {
+    "character": "三",
+    "meaning": "tiga",
+    "mnemonic": "Bayangkan tiga batang lidi ditumpuk mendatar. Hitung dari atas ke bawah: satu, dua, tiga."
+  },
+  {
+    "character": "四",
+    "meaning": "empat",
+    "mnemonic": "Bayangkan jendela dengan empat sudut. Dua tirai terlipat berada di dalam bingkainya, mengingatkanmu untuk menghitung keempat sudut itu."
+  },
+  {
+    "character": "五",
+    "meaning": "lima",
+    "mnemonic": "Bayangkan angka 5 dibuat kaku seperti rak. Bagian atas dan bawahnya mendatar, sedangkan bagian tengahnya berbelok untuk mengingatkanmu pada lima."
+  },
+  {
+    "character": "六",
+    "meaning": "enam",
+    "mnemonic": "Bayangkan orang bertopi lebar sedang berlari dengan kedua kaki terbuka. Ia terburu-buru berangkat tepat pukul enam."
+  },
+  {
+    "character": "七",
+    "meaning": "tujuh",
+    "mnemonic": "Bayangkan angka 7 berubah menjadi kait bertopi lebar. Garis mendatar menembus batangnya, lalu ujung bawahnya menekuk ke kanan."
+  },
+  {
+    "character": "八",
+    "meaning": "delapan",
+    "mnemonic": "Bayangkan dua kaki membuka seperti pintu masuk. Di antara keduanya, delapan anak sedang mengantre untuk lewat."
+  },
+  {
+    "character": "九",
+    "meaning": "sembilan",
+    "mnemonic": "Bayangkan sembilan pelari melewati gerbang kecil. Tiang kirinya miring, sedangkan tiang kanan menekuk dan berkait ke luar."
+  },
+  {
+    "character": "十",
+    "meaning": "sepuluh",
+    "mnemonic": "Bayangkan tanda tambah besar yang mempertemukan dua tangan. Masing-masing tangan punya lima jari, jadi jumlahnya sepuluh."
+  },
+  {
+    "character": "安",
+    "meaning": "murah atau tenang",
+    "mnemonic": "Bayangkan perempuan 女 berteduh dengan tenang di bawah atap 宀. Penginapannya murah, jadi ia bisa beristirahat tanpa cemas."
+  },
+  {
+    "character": "高",
+    "meaning": "tinggi atau mahal",
+    "mnemonic": "Bayangkan gedung bertingkat dengan atap di puncak, jendela kotak di tengah, dan pintu kotak di bawah. Gedungnya tinggi, harga kamarnya pun mahal."
+  },
+  {
+    "character": "古",
+    "meaning": "tua atau kuno",
+    "mnemonic": "Bayangkan kotak 口 tua dengan tanda silang 十 di atasnya. Tanda yang sudah berkarat itu memperingatkan bahwa barang di dalamnya sangat kuno."
+  },
+  {
+    "character": "新",
+    "meaning": "baru",
+    "mnemonic": "Bayangkan kapak 斤 di kanan menebang pohon 木 di kiri bawah. Dari kayunya dibuat papan nama baru yang berdiri tegak seperti 立 di kiri atas."
+  },
+  {
+    "character": "白",
+    "meaning": "putih",
+    "mnemonic": "Bayangkan jendela berbentuk 日 tersorot seberkas cahaya dari kiri atas. Cahayanya begitu terang hingga seluruh jendela tampak putih."
+  },
+  {
+    "character": "長",
+    "meaning": "panjang",
+    "mnemonic": "Bayangkan rambut dengan beberapa helai mendatar di atas. Rambut itu menjuntai panjang ke bawah, lalu ujungnya melengkung ke kanan."
+  },
+  {
+    "character": "男",
+    "meaning": "laki-laki",
+    "mnemonic": "Bayangkan seorang laki-laki membawa papan kotak berpetak seperti 田. Di bawahnya, pegangan papan melengkung seperti 力."
+  },
+  {
+    "character": "女",
+    "meaning": "perempuan",
+    "mnemonic": "Bayangkan seorang perempuan menyilangkan kaki sambil merentangkan lengan. Garis lengkung dan garis silang membentuk posenya."
+  },
+  {
+    "character": "気",
+    "meaning": "energi atau perasaan",
+    "mnemonic": "Bayangkan embusan napas membentuk garis-garis di bagian atas. Di bawahnya ada pusaran kecil bersilang, seperti energi yang berputar di dalam tubuh."
+  },
+  {
+    "character": "上",
+    "meaning": "atas",
+    "mnemonic": "Bayangkan garis panjang di bawah sebagai lantai. Sebuah penunjuk berdiri di atasnya dengan lengan kecil mengarah ke kanan, mengajakmu melihat ke atas."
+  },
+  {
+    "character": "下",
+    "meaning": "bawah",
+    "mnemonic": "Bayangkan garis panjang di atas sebagai langit-langit. Penunjuk yang menggantung darinya mengarahkan pandangan ke bawah."
+  },
+  {
+    "character": "中",
+    "meaning": "tengah atau dalam",
+    "mnemonic": "Bayangkan sebuah kotak ditembus garis tegak tepat di tengah. Garis itu menunjukkan bagian tengah di dalam kotak."
+  },
+  {
+    "character": "外",
+    "meaning": "luar",
+    "mnemonic": "Bayangkan bentuk bulan sabit di kiri, di samping tiang bercabang kecil di kanan. Tiang itu menjadi penunjuk jalan ke luar pada malam hari."
+  },
+  {
+    "character": "左",
+    "meaning": "kiri",
+    "mnemonic": "Bayangkan tangan di atas memegang penggaris berbentuk 工 di bawahnya. Kamu memakainya dengan tangan kiri."
+  },
+  {
+    "character": "右",
+    "meaning": "kanan",
+    "mnemonic": "Bayangkan tangan di atas menyuapkan makanan ke mulut 口 di bawahnya. Tangan yang dipakai adalah tangan kanan."
+  },
+  {
+    "character": "前",
+    "meaning": "depan",
+    "mnemonic": "Bayangkan sepasang lampu di atas garis mendatar. Di bawahnya, jendela berpetak di kiri dan dua wiper tegak di kanan menandai bagian depan kendaraan."
+  },
+  {
+    "character": "後",
+    "meaning": "belakang atau sesudah",
+    "mnemonic": "Bayangkan langkah kecil di kiri, tali terpilin di kanan atas, dan kaki yang menyeret di kanan bawah. Orang itu tertinggal di belakang rombongan."
+  },
+  {
+    "character": "間",
+    "meaning": "antara atau sela",
+    "mnemonic": "Bayangkan sinar matahari 日 masuk di antara dua daun gerbang 門. Cahaya terlihat melalui celah di tengahnya."
+  },
+  {
+    "character": "車",
+    "meaning": "kendaraan atau mobil",
+    "mnemonic": "Bayangkan kendaraan dengan badan kotak berpetak di tengah. Sebuah batang menembusnya dari atas ke bawah, dengan poros melintang di kedua ujung."
+  },
+  {
+    "character": "東",
+    "meaning": "timur",
+    "mnemonic": "Bayangkan matahari 日 muncul di tengah pohon 木. Pagi dimulai saat matahari terbit dari timur."
+  },
+  {
+    "character": "西",
+    "meaning": "barat",
+    "mnemonic": "Bayangkan jendela kotak dengan dua tirai terlipat di dalamnya dan garis atap di atas. Dari jendela yang menghadap barat itu, kamu melihat matahari terbenam."
+  },
+  {
+    "character": "南",
+    "meaning": "selatan",
+    "mnemonic": "Bayangkan kompas dengan pegangan berbentuk silang di atas. Bingkai di bawahnya berisi dua titik kecil dan jarum berpalang yang menunjuk ke selatan."
+  },
+  {
+    "character": "北",
+    "meaning": "utara",
+    "mnemonic": "Bayangkan dua orang berdiri saling membelakangi, satu menghadap kiri dan satu menghadap kanan. Mereka sedang menahan angin dingin yang datang dari utara."
+  },
+  {
+    "character": "道",
+    "meaning": "jalan",
+    "mnemonic": "Bayangkan kepala 首 melihat ke depan, ditemani jalur berkelok 辶 di kiri dan bawahnya. Ikuti jalur itu sebagai jalanmu."
+  },
+  {
+    "character": "駅",
+    "meaning": "stasiun",
+    "mnemonic": "Bayangkan kuda 馬 menunggu di kiri, di samping papan peron yang kakinya melebar ke kanan. Itulah tempat penumpang berkumpul, sebuah stasiun."
+  },
+  {
+    "character": "行",
+    "meaning": "pergi atau berjalan",
+    "mnemonic": "Bayangkan jejak langkah di kiri menuju palang penunjuk di kanan. Ikuti arah penunjuk itu dan mulailah berjalan."
+  },
+  {
+    "character": "電",
+    "meaning": "listrik",
+    "mnemonic": "Bayangkan hujan 雨 turun di atas panel kotak berpetak. Dari panel itu menjulur kabel melengkung ke kanan, menyalurkan listrik."
+  },
+  {
+    "character": "見",
+    "meaning": "melihat",
+    "mnemonic": "Bayangkan mata 目 yang memiliki dua kaki di bawahnya. Mata itu berjalan mendekat agar bisa melihat dengan jelas."
+  },
+  {
+    "character": "読",
+    "meaning": "membaca",
+    "mnemonic": "Bayangkan kata-kata 言 di kiri dipasang pada kios di kanan. Kios bertanda tambah di atas dan berkaki dua itu mengundangmu membaca pengumumannya."
+  },
+  {
+    "character": "書",
+    "meaning": "menulis",
+    "mnemonic": "Bayangkan kuas tegak menembus deretan garis mendatar di bagian atas. Di bawahnya ada halaman kotak bergaris, tempatmu menulis."
+  },
+  {
+    "character": "年",
+    "meaning": "tahun",
+    "mnemonic": "Bayangkan kalender tahunan bertiang panjang di tengah dan beberapa garis mendatar untuk menandai musim. Goresan miring kecil di kiri atas menandai awal tahun."
+  },
+  {
+    "character": "百",
+    "meaning": "seratus",
+    "mnemonic": "Bayangkan kotak putih 白 dengan garis tambahan sebagai tutup di atasnya. Pada tutup itu tertulis '100', karena isinya seratus koin."
+  },
+  {
+    "character": "午",
+    "meaning": "tengah hari",
+    "mnemonic": "Bayangkan dua palang mendatar ditembus tiang tegak, dengan ujung miring kecil di kiri atas. Tiang itu menjadi jam matahari yang menandakan tengah hari."
+  },
+  {
+    "character": "半",
+    "meaning": "setengah",
+    "mnemonic": "Bayangkan dua potongan kecil di atas tumpukan dua garis. Satu garis tegak membelah tumpukan tepat di tengah, membaginya menjadi setengah."
+  },
+  {
+    "character": "週",
+    "meaning": "minggu atau pekan",
+    "mnemonic": "Bayangkan jalur 辶 mengelilingi papan jadwal berbentuk kotak di kanan. Garis-garis dan kotak kecil di dalamnya menandai kegiatan yang berulang setiap minggu."
+  },
+  {
+    "character": "万",
+    "meaning": "sepuluh ribu",
+    "mnemonic": "Bayangkan satu garis mendatar menjadi meja bank. Dua kaki di bawahnya, satu miring dan satu berkait, menyangga uang sebanyak sepuluh ribu."
+  },
+  {
+    "character": "千",
+    "meaning": "seribu",
+    "mnemonic": "Bayangkan seribu batang lidi diikat pada tiang berbentuk 十. Ujung ikatannya terlihat sebagai garis miring pendek di bagian atas."
+  },
+  {
+    "character": "毎",
+    "meaning": "setiap",
+    "mnemonic": "Bayangkan papan kotak bergaris di bawah dua goresan kecil di atas. Papan itu adalah jadwal yang kamu buka setiap hari."
+  },
+  {
+    "character": "食",
+    "meaning": "makan; makanan",
+    "mnemonic": "Bayangkan tudung saji di bagian atas 食 menutupi wadah di bawahnya. Saat tudung dibuka, ada makanan yang siap kamu makan."
+  },
+  {
+    "character": "飲",
+    "meaning": "minum",
+    "mnemonic": "Bayangkan bagian kiri 飲 sebagai makanan di meja, dan 欠 di kanan sebagai orang yang membuka mulut. Setelah makan, ia meneguk air untuk minum."
+  },
+  {
+    "character": "立",
+    "meaning": "berdiri",
+    "mnemonic": "Bayangkan bagian atas 立 sebagai kepala dan bahu seseorang, dengan dua kaki di bawahnya. Kedua kakinya berpijak pada garis tanah: ia sedang berdiri."
+  },
+  {
+    "character": "休",
+    "meaning": "istirahat",
+    "mnemonic": "Bayangkan orang 亻 di kiri bersandar pada pohon 木 di kanan setelah berjalan jauh. Ia sedang beristirahat."
+  },
+  {
+    "character": "入",
+    "meaning": "masuk",
+    "mnemonic": "Bayangkan dua garis 入 sebagai sisi pintu tenda yang terbuka di bawah. Kamu melewati celah itu untuk masuk ke tenda."
+  },
+  {
+    "character": "出",
+    "meaning": "keluar",
+    "mnemonic": "Bayangkan garis tegak 出 sebagai tunas yang menembus dua lapis tanah berbentuk 凵. Ujung tunas itu akhirnya keluar ke permukaan."
+  },
+  {
+    "character": "言",
+    "meaning": "berkata; kata",
+    "mnemonic": "Bayangkan 口 di bawah 言 sebagai mulut yang berbicara. Garis-garis di atasnya adalah kata-kata yang keluar saat seseorang berkata sesuatu."
+  },
+  {
+    "character": "話",
+    "meaning": "berbicara; cerita",
+    "mnemonic": "Bayangkan kata-kata 言 di kiri keluar saat lidah 舌 di kanan bergerak. Kamu sedang berbicara untuk menceritakan sesuatu."
+  },
+  {
+    "character": "聞",
+    "meaning": "mendengar; bertanya",
+    "mnemonic": "Bayangkan telinga 耳 di tengah gerbang 門. Seseorang menempelkan telinganya di sana untuk mendengar percakapan dari balik gerbang."
+  },
+  {
+    "character": "買",
+    "meaning": "membeli",
+    "mnemonic": "Bayangkan jaring 罒 di atas 買 menampung kerang 貝 di bawahnya. Kamu membawa kerang itu sebagai uang untuk membeli barang."
+  },
+  {
+    "character": "店",
+    "meaning": "toko",
+    "mnemonic": "Bayangkan atap 广 menaungi papan ramalan 占. Di bawah atap itu, seorang peramal membuka toko kecilnya."
+  },
+  {
+    "character": "円",
+    "meaning": "yen; bulat",
+    "mnemonic": "Bayangkan bingkai luar 円 sebagai loket penukaran uang, dengan sekat di dalamnya. Di loket itu, kamu menukar uang dengan koin yen yang bulat."
+  },
+  {
+    "character": "会",
+    "meaning": "bertemu; pertemuan",
+    "mnemonic": "Bayangkan bagian atas 会 sebagai atap tempat orang berteduh. Bentuk 云 di bawahnya menjadi meja tempat mereka duduk dan bertemu."
+  },
+  {
+    "character": "社",
+    "meaning": "perusahaan; kuil Shinto",
+    "mnemonic": "Bayangkan 礻di kiri sebagai papan nama dan 土 di kanan sebagai tanah tempat sebuah kantor dibangun. Papan itu menunjukkan nama perusahaan pemilik kantor."
+  },
+  {
+    "character": "日",
+    "meaning": "matahari; hari",
+    "mnemonic": "Bayangkan bingkai 日 sebagai matahari kotak, dengan garis cahaya di tengahnya. Saat matahari itu terbit lagi, satu hari baru dimulai."
+  },
+  {
+    "character": "月",
+    "meaning": "bulan",
+    "mnemonic": "Bayangkan sisi melengkung 月 sebagai bulan sabit. Dua garis di dalamnya menjadi garis bayangan pada permukaan bulan."
+  },
+  {
+    "character": "火",
+    "meaning": "api",
+    "mnemonic": "Bayangkan dua garis tengah 火 sebagai nyala api yang menjulang. Dua garis kecil di sisinya menjadi percikan api yang beterbangan."
+  },
+  {
+    "character": "水",
+    "meaning": "air",
+    "mnemonic": "Bayangkan garis tengah 水 sebagai aliran air utama. Garis-garis di kiri dan kanannya menjadi percikan air yang menyebar."
+  },
+  {
+    "character": "木",
+    "meaning": "pohon; kayu",
+    "mnemonic": "Bayangkan garis tegak 木 sebagai batang pohon, garis mendatar sebagai cabangnya, dan dua garis miring sebagai akarnya. Itulah pohon yang tumbuh di depanmu."
+  },
+  {
+    "character": "金",
+    "meaning": "emas; uang; logam",
+    "mnemonic": "Bayangkan atap 金 menaungi tambang bertingkat tiga, dengan tiang tegak di tengah. Dua titik di kiri dan kanannya adalah butir emas yang akan dijadikan uang logam."
+  },
+  {
+    "character": "土",
+    "meaning": "tanah",
+    "mnemonic": "Bayangkan garis tegak 土 sebagai patok yang tertancap di tanah. Garis pendek menandai gundukan di sekitarnya, dan garis panjang di bawah menjadi permukaan tanah."
+  },
+  {
+    "character": "時",
+    "meaning": "waktu; jam",
+    "mnemonic": "Bayangkan matahari 日 di kiri menyinari kuil 寺 di kanan. Kamu melihat jam di kuil itu untuk mengetahui waktu."
+  },
+  {
+    "character": "分",
+    "meaning": "membagi; menit",
+    "mnemonic": "Bayangkan pisau 刀 di bawah 分 membelah sesuatu menjadi dua bagian yang membuka seperti 八 di atasnya. Satu jam pun bisa dibagi menjadi bagian-bagian kecil bernama menit."
+  },
+  {
+    "character": "子",
+    "meaning": "anak",
+    "mnemonic": "Bayangkan lengkungan atas 子 sebagai kepala anak. Garis mendatar menjadi dua lengannya yang terbuka, dan garis turun menjadi tubuhnya saat ia meminta dipeluk."
+  },
+  {
+    "character": "父",
+    "meaning": "ayah",
+    "mnemonic": "Bayangkan dua garis pendek di atas 父 sebagai alis ayah. Dua garis panjang yang bersilang di bawahnya menjadi kedua lengannya saat ayah menyilangkan tangan."
+  },
+  {
+    "character": "母",
+    "meaning": "ibu",
+    "mnemonic": "Bayangkan bingkai 母 sebagai tubuh ibu, dengan garis melintang sebagai sabuk bajunya. Dua titik di dalamnya menjadi dua kancing baju ibu saat ia memelukmu."
+  },
+  {
+    "character": "友",
+    "meaning": "teman",
+    "mnemonic": "Bayangkan garis miring dari bagian atas 友 sebagai lengan yang terulur. Bentuk 又 di bawahnya menjadi tangan teman yang menyambut untuk bersalaman."
+  },
+  {
+    "character": "手",
+    "meaning": "tangan",
+    "mnemonic": "Bayangkan garis-garis melintang 手 sebagai jari-jari yang terbuka. Garis panjang berkait di tengah menjadi pergelangan tanganmu."
+  },
+  {
+    "character": "足",
+    "meaning": "kaki; cukup",
+    "mnemonic": "Bayangkan kotak di atas 足 sebagai lutut dan bagian bawahnya sebagai tungkai dengan telapak yang menapak ke kanan. Itulah kaki yang siap melangkah."
+  },
+  {
+    "character": "口",
+    "meaning": "mulut",
+    "mnemonic": "Bayangkan kotak 口 sebagai mulut yang terbuka lebar saat kamu berkata a. Lihat ruang kosong di tengah mulut itu."
+  },
+  {
+    "character": "目",
+    "meaning": "mata",
+    "mnemonic": "Bayangkan bingkai 目 sebagai mata yang diputar tegak. Dua garis di dalamnya membatasi bagian tengah tempat pupil mata berada."
+  },
+  {
+    "character": "耳",
+    "meaning": "telinga",
+    "mnemonic": "Bayangkan sisi panjang 耳 sebagai tepi telinga, dan garis-garis di dalamnya sebagai lipatan telinga. Dekatkan telinga itu untuk mendengar bisikan."
+  },
+  {
+    "character": "大",
+    "meaning": "besar",
+    "mnemonic": "Bayangkan orang 大 merentangkan kedua tangan dan kakinya selebar mungkin. Ia ingin menunjukkan sesuatu yang sangat besar."
+  },
+  {
+    "character": "小",
+    "meaning": "kecil",
+    "mnemonic": "Bayangkan garis tengah 小 sebagai tubuh anak kecil. Dua garis pendek di sisinya menjadi tangan mungil yang belum bisa merentang jauh."
+  },
+  {
+    "character": "多",
+    "meaning": "banyak",
+    "mnemonic": "Bayangkan dua potong melon berbentuk 夕 ditumpuk, satu di atas yang lain. Kamu terus menambah potongan sampai ada banyak melon."
+  },
+  {
+    "character": "少",
+    "meaning": "sedikit",
+    "mnemonic": "Bayangkan 小 sebagai beberapa butir beras kecil, lalu garis miring di bawahnya sebagai sendok. Sendok itu hanya mendapat sedikit beras."
+  },
+  {
+    "character": "雨",
+    "meaning": "hujan",
+    "mnemonic": "Bayangkan garis paling atas 雨 sebagai awan, lalu bingkai di bawahnya sebagai jendela dengan sekat tegak di tengah. Empat titik di dalam jendela menjadi tetes hujan yang turun."
+  },
+  {
+    "character": "天",
+    "meaning": "langit",
+    "mnemonic": "Bayangkan orang 大 berdiri dengan tangan terbuka. Garis mendatar di atas kepalanya adalah langit yang membentang tinggi."
+  },
+  {
+    "character": "空",
+    "meaning": "langit; kosong",
+    "mnemonic": "Bayangkan lubang 穴 di atas 空 sebagai jendela loteng, dan 工 di bawahnya sebagai penyangga. Melalui jendela kosong itu, kamu melihat langit luas."
+  },
+  {
+    "character": "山",
+    "meaning": "gunung",
+    "mnemonic": "Bayangkan tiga garis tegak 山 sebagai tiga puncak gunung yang terhubung di bawah. Puncak di tengah menjulang paling tinggi."
+  },
+  {
+    "character": "川",
+    "meaning": "sungai",
+    "mnemonic": "Bayangkan tiga garis 川 sebagai aliran sungai yang bergerak berdampingan. Ikuti arusnya dari atas ke bawah."
+  },
+  {
+    "character": "来",
+    "meaning": "datang",
+    "mnemonic": "Bayangkan 来 sebagai pohon kecil dengan dua buah di kiri dan kanan batangnya. Dua akar di bawah berubah menjadi kaki, lalu pohon itu datang menghampirimu."
+  },
+  {
+    "character": "令",
+    "meaning": "perintah",
+    "mnemonic": "Bayangkan bagian atas 令 sebagai atap runcing. Bentuk bersudut di bawahnya menjadi orang yang menunduk, siap menerima perintah."
+  }
+]
