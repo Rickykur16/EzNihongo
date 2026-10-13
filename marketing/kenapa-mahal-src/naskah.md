@@ -1,11 +1,11 @@
-# Naskah: "Jangan buru-buru masuk LPK" (±46 detik)
+# Naskah: "Jangan buru-buru masuk LPK" (±44 detik)
 
 Gaya: tanpa wajah. Suara ElevenLabs v4 + B-roll gerak sinematik + teks per kata di tengah
 (mengikuti video referensi pemilik, 13 Okt 2026). Arah isi (pemilik, 13 Okt 2026): himbauan
 supaya tidak terburu-buru masuk LPK dan tidak tertipu OKNUM LPK, bukan menyalahkan semua LPK, dan DITUTUP dengan alternatif jalur SSW mandiri (pemilik:
 "di akhirnya alternatif jalur mandiri aja"). Alur: masalah → penyebab (oknum: talangan, jaminan)
-→ cara jaga diri (cek izin, rincian tertulis) → jalan keluar (mandiri) → rujuk video "Biaya TG
-mandiri".
+→ cara jaga diri (cek izin, rincian tertulis) → jalan keluar (mandiri) → ajakan bimbingan SSW mandiri lewat link di bio
+(pemilik: "Klik link di bio dong untuk bimbingan tg mandiri").
 Hook: screenshot komentar TikTok yang dikirim pemilik, muncul satu per satu dan menumpuk.
 
 ## Teks untuk ElevenLabs (Eleven v4, tanpa tag jeda, generate sekaligus)
@@ -23,7 +23,7 @@ Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya 
 
 Atau pilih jalur lain: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.
 
-Rinciannya ada di video sebelumnya. Simpan, dan kirim ke teman yang mau ke Jepang.
+Mau dibimbing jalur SSW mandiri? Klik link di bio.
 ```
 
 ## Sumber & dasar klaim (dicek 13 Okt 2026)

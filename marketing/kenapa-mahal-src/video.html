@@ -30,7 +30,7 @@ const VO = [
   'Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.',
   'Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.',
   'Atau pilih jalur lain: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
-  'Rinciannya ada di video sebelumnya. Simpan, dan kirim ke teman yang mau ke Jepang.',
+  'Mau dibimbing jalur SSW mandiri? Klik link di bio.',
 ];
 // Teks caption = VO, kecuali angka yang dibaca huruf ditampilkan sebagai angka.
 const CAP = [
@@ -40,11 +40,11 @@ const CAP = [
   'ada juga yang diminta jaminan sertifikat rumah. itu tanda bahaya',
   'jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis',
   'atau pilih jalur lain: SSW mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
-  'rinciannya ada di video sebelumnya. simpan, dan kirim ke teman yang mau ke Jepang',
+  'mau dibimbing jalur SSW mandiri? klik link di bio',
 ];
 // Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).
 let PARA = [0, 7.0, 15.1, 24.0, 28.1, 33.2, 40.6];
-let DUR = 46.4;
+let DUR = 44.0;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
@@ -384,7 +384,7 @@ function mandiri(lt, d) {
   text('kalau ujian lulus sekali · tempat kerja tetap harus dicari', W / 2, 1345, { w: 600, px: 28, color: 'rgba(255,255,255,.75)', alpha: P(lt, km + .4, km + .7) });
 }
 
-// 7. Penutup: logo + rincian di video sebelumnya + kirim ke teman.
+// 7. Penutup: logo + ajakan bimbingan SSW mandiri lewat link di bio.
 function cta(lt, d) {
   bgGlow('rgba(255,255,255,.12)', 'rgba(40,40,40,.25)', W / 2, 760, 1000);
   dust(lt, 31, 'rgba(255,255,255,', 40);
@@ -392,10 +392,10 @@ function cta(lt, d) {
   ctx.save(); ctx.globalAlpha = k; ctx.translate(W / 2, 560 + (1 - k) * 60); ctx.rotate(-.02);
   ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 40; ctx.fillStyle = CREAM; rrect(-330, -150, 660, 300, 18); ctx.fill(); ctx.shadowBlur = 0;
   const lg = document.getElementById('logo'); ctx.drawImage(lg, -260, -130, 520, 260); ctx.restore();
-  popIn(lt, .3, (s) => scaled(W / 2, 860, s, () => text('rincian biaya mandiri:', W / 2, 860, { w: 800, px: 48 })));
-  popIn(lt, .5, (s) => scaled(W / 2, 935, s, () => text('cek video sebelumnya', W / 2, 935, { w: 800, px: 48, color: GOLD })));
-  popIn(lt, cueTime(6, 'Simpan') - PARA[6], (s) => scaled(W / 2, 1080, s, () => chip('KIRIM KE TEMAN', W / 2, 1080, { px: 80 })));
-  text('yang mau ke Jepang', W / 2, 1200, { w: 700, px: 40, alpha: P(lt, cueTime(6, 'Simpan') - PARA[6] + .4, cueTime(6, 'Simpan') - PARA[6] + .8) });
+  popIn(lt, .3, (s) => scaled(W / 2, 880, s, () => text('bimbingan', W / 2, 880, { w: 800, px: 52 })));
+  popIn(lt, .5, (s) => scaled(W / 2, 970, s, () => text('SSW MANDIRI', W / 2, 970, { w: 900, px: 96, color: TEAL, shadow: 24 })));
+  const kl = cueTime(6, 'Klik') - PARA[6];
+  popIn(lt, kl, (s) => scaled(W / 2, 1130, s, () => chip('KLIK LINK DI BIO', W / 2, 1130, { px: 80 })));
 }
 
 // ---------------------------------------------------------------- caption & render
