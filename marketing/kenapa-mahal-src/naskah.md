@@ -11,11 +11,11 @@ Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.
 
 Padahal menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Lewat jalur mandiri, biaya resminya mulai delapan jutaan.
 
-Kok bisa membengkak? Pertama, pelatihan. Berbulan-bulan belajar bahasa, plus asrama dan makan.
+Kok bisa membengkak? Pertama, pelatihan berbulan-bulan, plus asrama dan makan.
 
-Kedua, dana talangan. Dicicil dari gaji di Jepang. Ada yang enam jutaan sebulan, sampai dua tahun.
+Kedua, dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma diterima lima puluh delapan, tapi nyicil enam juta lebih sebulan, selama dua tahun. Mau mundur? Kena denda.
 
-Ketiga, calo dan jaminan. Ada yang sampai menjaminkan sertifikat rumah. Itu tanda bahaya.
+Ketiga, calo dan jaminan, sampai sertifikat rumah. Itu tanda bahaya.
 
 Mulai dua ribu dua puluh tujuh, Jepang berencana membatasi biaya yang ditanggung pekerja, maksimal dua bulan gaji.
 
@@ -24,11 +24,12 @@ Jadi kuncinya: bahasa. Makin cepat kamu bisa, makin sedikit yang perlu kamu baya
 
 ## Sumber & dasar klaim (dicek 13 Okt 2026)
 
-- "Sampai 150 juta", "6 jutaan sebulan sampai 2 tahun", "jaminan sertifikat rumah": PENGAKUAN
+- "Sampai 150 juta", "pinjam 80 diterima 58, cicil 6 juta lebih sebulan selama 2 tahun",
+  "mundur kena denda", "jaminan sertifikat rumah": PENGAKUAN
   warganet di komentar TikTok (screenshot dari pemilik), BUKAN data resmi. Naskah memakai
   "ada yang ngaku" / "ada yang", layar menulis "pengakuan warganet". Nama akun & nama LPK di
   komentar SENGAJA tidak ditampilkan. Hook memakai SCREENSHOT asli (permintaan pemilik), dipotong
-  per komentar dengan avatar, nama akun, dan nama LPK/daerah DIPIKSELKAN (`komentar-1..3.jpg`;
+  per komentar dengan avatar, nama akun, dan nama LPK/daerah DIPIKSELKAN (`komentar-1..3.jpg` di hook, `komentar-4.jpg` di adegan dana talangan;
   file asli tidak di-commit).
 - Rp25–35 juta = rata-rata biaya pemagangan ke Jepang lewat LPK-SO menurut Kemnaker, termasuk
   ±4 bulan pelatihan, asrama & makan, paspor, visa, medical, dokumen (Kompas Ohayo Jepang,
@@ -45,3 +46,8 @@ Jadi kuncinya: bahasa. Makin cepat kamu bisa, makin sedikit yang perlu kamu baya
 
 - Tidak menyebut "biaya penempatan". Menyinggung LPK + angka = keputusan pemilik per video.
 - Tidak menuduh LPK tertentu. Kata "calo" untuk pihak yang minta uang di muka/jaminan.
+- Komentar "visa magang tidak lebih dari 35 juta, kalo lebih fix di tipu" SENGAJA tidak dipakai:
+  itu opini mutlak warganet ("fix ditipu"), dan rata-rata Kemnaker adalah rata-rata, bukan batas
+  atas resmi. Menampilkannya sama dengan video ikut menyatakan semua yang di atas 35 juta penipuan.
+- Komentar "dana talang 60 jt jadi 120 jt" + "LPK nyekek murid" juga tidak ditampilkan (menyebut
+  daerah, nadanya menuduh); yang diambil hanya klaim "mundur kena denda", tetap sebagai pengakuan.

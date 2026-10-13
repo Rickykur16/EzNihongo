@@ -19,16 +19,16 @@
 <body>
 <canvas id="c" width="1080" height="1920"></canvas>
 <img id="logo" src="logo-a.png" style="display:none">
-<img id="km1" src="komentar-1.jpg" style="display:none"><img id="km2" src="komentar-2.jpg" style="display:none"><img id="km3" src="komentar-3.jpg" style="display:none">
+<img id="km1" src="komentar-1.jpg" style="display:none"><img id="km2" src="komentar-2.jpg" style="display:none"><img id="km3" src="komentar-3.jpg" style="display:none"><img id="km4" src="komentar-4.jpg" style="display:none">
 <script>
 'use strict';
 // ---------------------------------------------------------------- naskah & waktu
 const VO = [
   'Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.',
   'Padahal menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Lewat jalur mandiri, biaya resminya mulai delapan jutaan.',
-  'Kok bisa membengkak? Pertama, pelatihan. Berbulan-bulan belajar bahasa, plus asrama dan makan.',
-  'Kedua, dana talangan. Dicicil dari gaji di Jepang. Ada yang enam jutaan sebulan, sampai dua tahun.',
-  'Ketiga, calo dan jaminan. Ada yang sampai menjaminkan sertifikat rumah. Itu tanda bahaya.',
+  'Kok bisa membengkak? Pertama, pelatihan berbulan-bulan, plus asrama dan makan.',
+  'Kedua, dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma diterima lima puluh delapan, tapi nyicil enam juta lebih sebulan, selama dua tahun. Mau mundur? Kena denda.',
+  'Ketiga, calo dan jaminan, sampai sertifikat rumah. Itu tanda bahaya.',
   'Mulai dua ribu dua puluh tujuh, Jepang berencana membatasi biaya yang ditanggung pekerja, maksimal dua bulan gaji.',
   'Jadi kuncinya: bahasa. Makin cepat kamu bisa, makin sedikit yang perlu kamu bayar. Simpan video ini, dan komen "mulai" kalau mau belajar dari nol.',
 ];
@@ -36,15 +36,15 @@ const VO = [
 const CAP = [
   'ada yang ngaku bayar sampai Rp150 juta, cuma buat magang ke Jepang',
   'padahal menurut Kemnaker, rata-ratanya Rp25–35 juta. lewat jalur mandiri, biaya resminya mulai 8 jutaan',
-  'kok bisa membengkak? pertama, pelatihan. berbulan-bulan belajar bahasa, plus asrama dan makan',
-  'kedua, dana talangan. dicicil dari gaji di Jepang. ada yang 6 jutaan sebulan, sampai 2 tahun',
-  'ketiga, calo dan jaminan. ada yang sampai menjaminkan sertifikat rumah. itu tanda bahaya',
+  'kok bisa membengkak? pertama, pelatihan berbulan-bulan, plus asrama dan makan',
+  'kedua, dana talangan. ada yang ngaku pinjam 80 juta, cuma diterima 58, tapi nyicil 6 juta lebih sebulan, selama 2 tahun. mau mundur? kena denda',
+  'ketiga, calo dan jaminan, sampai sertifikat rumah. itu tanda bahaya',
   'mulai 2027, Jepang berencana membatasi biaya yang ditanggung pekerja, maksimal 2 bulan gaji',
   'jadi kuncinya: bahasa. makin cepat kamu bisa, makin sedikit yang perlu kamu bayar. simpan video ini, dan komen "mulai" kalau mau belajar dari nol',
 ];
 // Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).
-let PARA = [0, 4.8, 13.0, 18.4, 24.4, 29.4, 35.2];
-let DUR = 44.8;
+let PARA = [0, 4.8, 12.6, 16.6, 26.2, 30.0, 35.8];
+let DUR = 45.2;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
@@ -286,24 +286,25 @@ function drawIcon(kind, cx, cy, k, label) {
   text(label, cx, cy + 180, { w: 800, px: 44, alpha: clamp(k * 2) });
 }
 
-// 4. Dana talangan: cicilan bulanan menumpuk 24 bulan.
+// 4. Dana talangan: screenshot pengakuan (pinjam 80, terima 58, cicil 6 jt+ x 24 bulan), lalu
+// 24 kotak bulan dicoret satu per satu dan total cicilannya.
 function loan(lt, d) {
   bgGlow('rgba(60,60,90,.55)', 'rgba(10,10,25,.4)', W / 2, 860, 1100);
   dust(lt, 17, 'rgba(200,210,255,', 45);
   header('02', 'DANA TALANGAN', lt);
-  text('dicicil dari gaji di Jepang', W / 2, 440, { w: 700, px: 42, alpha: P(lt, .3, .6) });
-  // kalender 24 kotak bulan yang dicoret satu per satu
-  const n = Math.floor(clamp((lt - .8) / 2.6) * 24);
+  const ks = P(lt, .3, .65); if (ks) shot('km4', W / 2, 545, ks, -.012);
+  const n = Math.floor(clamp((lt - 1.4) / (d * .55)) * 24);
   for (let i = 0; i < 24; i++) {
-    const c = i % 6, r = Math.floor(i / 6), x = 165 + c * 150, y = 560 + r * 150;
-    ctx.fillStyle = i < n ? 'rgba(227,38,44,.9)' : 'rgba(255,255,255,.1)'; rrect(x, y, 130, 130, 14); ctx.fill();
-    text(String(i + 1), x + 65, y + 48, { w: 800, px: 40, color: i < n ? '#fff' : 'rgba(255,255,255,.5)' });
-    if (i < n) text('-6,6jt', x + 65, y + 95, { w: 700, px: 24 });
+    const c = i % 8, r = Math.floor(i / 8), x = 96 + c * 113, y = 730 + r * 118;
+    ctx.fillStyle = i < n ? 'rgba(227,38,44,.9)' : 'rgba(255,255,255,.1)'; rrect(x, y, 100, 104, 12); ctx.fill();
+    text(String(i + 1), x + 50, y + 40, { w: 800, px: 34, color: i < n ? '#fff' : 'rgba(255,255,255,.5)' });
+    if (i < n) text('-6jt', x + 50, y + 80, { w: 700, px: 22 });
   }
-  const total = Math.round(n * 6.6);
-  text(`Rp${total} jt`, W / 2, 1270, { w: 900, px: 120, color: GOLD, shadow: 30, alpha: P(lt, .8, 1.1) });
-  text('contoh pengakuan: 6,6 jt × 24 bulan', W / 2, 1380, { w: 600, px: 30, color: 'rgba(255,255,255,.7)', alpha: P(lt, .8, 1.1) });
-  popIn(lt, 3.9, (s) => scaled(W / 2, 1450, s, () => chip('simpan dulu biar nggak lupa', W / 2, 1450, { px: 34, bg: 'rgba(255,255,255,.92)', color: '#111' })));
+  const ka = P(lt, 1.2, 1.5);
+  text(`Rp${n * 6} jt+`, W / 2, 1180, { w: 900, px: 120, color: GOLD, shadow: 30, alpha: ka });
+  text('total cicilan · padahal yang diterima cuma Rp58 jt', W / 2, 1285, { w: 600, px: 30, color: 'rgba(255,255,255,.75)', alpha: ka });
+  const kd = cueTime(3, 'Mau mundur') - PARA[3];
+  popIn(lt, kd, (s) => scaled(W / 2, 1420, s, () => chip('MUNDUR? KENA DENDA', W / 2, 1420, { px: 50 })));
 }
 
 // 6. Calo: siluet bertopi, tangan meminta uang, tanda bahaya.
