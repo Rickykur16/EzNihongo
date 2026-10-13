@@ -1,4 +1,4 @@
-# Naskah: "Jangan buru-buru masuk LPK" (±44 detik)
+# Naskah: "Jangan buru-buru masuk LPK" (±43 detik)
 
 Gaya: tanpa wajah. Suara ElevenLabs v4 + B-roll gerak sinematik + teks per kata di tengah
 (mengikuti video referensi pemilik, 13 Okt 2026). Arah isi (pemilik, 13 Okt 2026): himbauan
@@ -15,7 +15,7 @@ Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta,
 
 Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.
 
-Misalnya dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma terima lima puluh delapan, tapi nyicil enam juta lebih sebulan, dua tahun.
+Contohnya dana talangan. Ada yang pinjam delapan puluh juta, cair cuma lima puluh delapan, nyicilnya enam juta sebulan, dua tahun.
 
 Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.
 

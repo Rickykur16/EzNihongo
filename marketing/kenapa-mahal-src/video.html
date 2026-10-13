@@ -30,7 +30,7 @@ if (OVERLAY) document.documentElement.style.background = document.body.style.bac
 const VO = [
   'Jangan buru-buru masuk LPK. Ada yang ngaku bayar sampai seratus lima puluh juta, cuma buat magang ke Jepang.',
   'Nggak semua LPK begitu. Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta. Yang bikin membengkak biasanya ulah oknum.',
-  'Misalnya dana talangan. Ada yang ngaku pinjam delapan puluh juta, cuma terima lima puluh delapan, tapi nyicil enam juta lebih sebulan, dua tahun.',
+  'Contohnya dana talangan. Ada yang pinjam delapan puluh juta, cair cuma lima puluh delapan, nyicilnya enam juta sebulan, dua tahun.',
   'Ada juga yang diminta jaminan sertifikat rumah. Itu tanda bahaya.',
   'Jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis.',
   'Atau pilih jalur lain: SSW mandiri, tanpa LPK. Belajar bahasa dan ikut ujian sendiri, biaya resminya mulai delapan jutaan.',
@@ -40,15 +40,15 @@ const VO = [
 const CAP = [
   'jangan buru-buru masuk LPK. ada yang ngaku bayar sampai Rp150 juta, cuma buat magang ke Jepang',
   'nggak semua LPK begitu. menurut Kemnaker, rata-ratanya Rp25–35 juta. yang bikin membengkak biasanya ulah oknum',
-  'misalnya dana talangan. ada yang ngaku pinjam 80 juta, cuma terima 58, tapi nyicil 6 juta lebih sebulan, 2 tahun',
+  'contohnya dana talangan. ada yang pinjam 80 juta, cair cuma 58, nyicilnya 6 juta sebulan, 2 tahun',
   'ada juga yang diminta jaminan sertifikat rumah. itu tanda bahaya',
   'jadi sebelum bayar, cek izinnya di Binalattas Kemnaker, dan minta rincian biaya tertulis',
   'atau pilih jalur lain: SSW mandiri, tanpa LPK. belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
   'mau dibimbing jalur SSW mandiri? klik link di bio',
 ];
 // Sementara (perkiraan 2,7 kata/dtk). Ganti dengan jeda VO asli (silencedetect).
-let PARA = [0, 7.0, 15.1, 24.0, 28.1, 33.2, 40.6];
-let DUR = 44.0;
+let PARA = [0, 7.0, 15.1, 22.9, 27.0, 32.1, 39.5];
+let DUR = 42.9;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
@@ -299,24 +299,38 @@ function izin(lt, d) {
   }));
 }
 
-// 3. Dana talangan: screenshot pengakuan (pinjam 80, terima 58, cicil 6 jt+ x 24 bulan), lalu
-// 24 kotak bulan dicoret satu per satu dan total cicilannya.
+// 3. Dana talangan: screenshot pengakuan (pinjam 80, cair 58, cicil 6 jt x 24 bulan). Sengaja
+// cepat (pemilik: bagian ini dulu membosankan): 24 kotak terisi makin cepat dalam ±1,5 dtk,
+// total menghantam dengan hentakan + kilat merah, lalu langsung pesan "baca dulu". Waktu
+// diikat ke kata VO: "cair" -> baris pinjam/cair, "nyicilnya" -> kotak mulai terisi.
+const loanHit = () => cueTime(2, 'nyicilnya') - PARA[2] + 1.5;
 function loan(lt, d) {
+  const LOAN_HIT = loanHit(), kc = cueTime(2, 'cair') - PARA[2];
   bgGlow('rgba(60,60,90,.55)', 'rgba(10,10,25,.4)', W / 2, 860, 1100);
   dust(lt, 17, 'rgba(200,210,255,', 45);
+  const shake = lt > LOAN_HIT && lt < LOAN_HIT + .35 ? Math.sin(lt * 90) * 14 * (1 - (lt - LOAN_HIT) / .35) : 0;
+  ctx.save(); ctx.translate(shake, 0);
   header('', 'DANA TALANGAN', lt);
-  const ks = P(lt, .3, .65); if (ks) shot('km4', W / 2, 545, ks, -.012);
-  const n = Math.floor(clamp((lt - 1.4) / (d * .55)) * 24);
+  const ks = P(lt, .1, .4); if (ks) shot('km4', W / 2, 545, ks, -.012);
+  const n = Math.floor(eIn(P(lt, LOAN_HIT - 1.5, LOAN_HIT)) * 24);
+  const hit = P(lt, LOAN_HIT, LOAN_HIT + .5);
   for (let i = 0; i < 24; i++) {
     const c = i % 8, r = Math.floor(i / 8), x = 96 + c * 113, y = 730 + r * 118;
-    ctx.fillStyle = i < n ? 'rgba(227,38,44,.9)' : 'rgba(255,255,255,.1)'; rrect(x, y, 100, 104, 12); ctx.fill();
-    text(String(i + 1), x + 50, y + 40, { w: 800, px: 34, color: i < n ? '#fff' : 'rgba(255,255,255,.5)' });
-    if (i < n) text('-6jt', x + 50, y + 80, { w: 700, px: 22 });
+    const on = i < n;
+    ctx.fillStyle = on ? `rgba(${227 + 28 * (hit > 0 && hit < 1 ? 1 - hit : 0)},38,44,.9)` : 'rgba(255,255,255,.1)'; rrect(x, y, 100, 104, 12); ctx.fill();
+    text(String(i + 1), x + 50, y + 40, { w: 800, px: 34, color: on ? '#fff' : 'rgba(255,255,255,.5)' });
+    if (on) text('-6jt', x + 50, y + 80, { w: 700, px: 22 });
   }
-  const ka = P(lt, 1.2, 1.5);
-  text(`Rp${n * 6} jt+`, W / 2, 1180, { w: 900, px: 120, color: GOLD, shadow: 30, alpha: ka });
-  text('total cicilan · padahal yang diterima cuma Rp58 jt', W / 2, 1285, { w: 600, px: 30, color: 'rgba(255,255,255,.75)', alpha: ka });
-  popIn(lt, d - 2.2, (s) => scaled(W / 2, 1420, s, () => chip('baca dulu sebelum tanda tangan', W / 2, 1420, { px: 44, bg: '#fff', color: '#111' })));
+  const kp = cueTime(2, 'pinjam') - PARA[2];
+  if (!n) {
+    popIn(lt, kp, (s) => scaled(W / 2, 1100, s, () => text('pinjam Rp80 jt', W / 2, 1100, { w: 900, px: 64, shadow: 20 })));
+    popIn(lt, kc, (s) => scaled(W / 2, 1190, s, () => text('cair cuma Rp58 jt', W / 2, 1190, { w: 900, px: 64, color: GOLD, shadow: 20 })));
+  }
+  const ka = n ? 1 : 0, big = hit > 0 ? 1 + .25 * (1 - eOut(hit)) : 1;
+  scaled(W / 2, 1180, big, () => text(`Rp${n * 6} jt`, W / 2, 1180, { w: 900, px: 120, color: hit > 0 ? '#ff5a5f' : GOLD, shadow: 30, alpha: ka }));
+  text('total cicilan · padahal yang cair cuma Rp58 jt', W / 2, 1285, { w: 600, px: 30, color: 'rgba(255,255,255,.8)', alpha: P(lt, LOAN_HIT + .2, LOAN_HIT + .5) });
+  ctx.restore();
+  popIn(lt, LOAN_HIT + 1.1, (s) => scaled(W / 2, 1420, s, () => chip('baca dulu sebelum tanda tangan', W / 2, 1420, { px: 44, bg: '#fff', color: '#111' })));
 }
 
 // 4. Jaminan: siluet bertopi memegang sertifikat rumah, tanda bahaya.
@@ -449,6 +463,7 @@ function init() {
   const c = [[0, 'impact', 0], [0, 'boom']];
   PARA.slice(1).forEach((p) => c.push([p - .02, 'cutfx'], [p, 'whoosh']));
   window.__SCENES.forEach((s, i) => { if (i && !PARA.includes(s.a)) c.push([s.a, 'whoosh']); });
+  const ls = window.__SCENES.find((s) => s.f === loan); if (ls) c.push([ls.a + loanHit(), 'impact', 0]);
   c.push([DUR - 3, 'boom']);
   window.CUES = c;
 }
