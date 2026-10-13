@@ -29,7 +29,7 @@ if (OVERLAY) document.documentElement.style.background = document.body.style.bac
 // ---------------------------------------------------------------- naskah & waktu
 // "|" = batas potongan ucapan (jeda di VO asli). Waktu tiap potongan ada di SEGT.
 const VO = [
-  'Seratus lima puluh juta,|cuma buat magang ke Jepang.|Jangan sampai kamu orang berikutnya.',
+  'Seratus lima puluh juta, cuma buat magang ke Jepang.|Jangan sampai kamu orang berikutnya.',
   'Nggak semua LPK semahal itu.|Menurut Kemnaker, rata-ratanya dua puluh lima sampai tiga puluh lima juta.|Yang bikin membengkak biasanya ulah oknum.',
   'Contohnya dana talangan.|Ada yang pinjam delapan puluh juta, nyicilnya enam juta lebih sebulan, selama dua tahun.',
   'Ada juga yang diminta jaminan sertifikat rumah.|Itu tanda bahaya.',
@@ -39,7 +39,7 @@ const VO = [
 ];
 // Teks caption = VO, kecuali angka yang dibaca huruf ditampilkan sebagai angka.
 const CAP = [
-  'Rp150 juta,|cuma buat magang ke Jepang.|jangan sampai kamu orang berikutnya',
+  'Rp150 juta, cuma buat magang ke Jepang.|jangan sampai kamu orang berikutnya',
   'nggak semua LPK semahal itu.|menurut Kemnaker, rata-ratanya Rp25–35 juta.|yang bikin membengkak biasanya ulah oknum',
   'contohnya dana talangan.|ada yang pinjam 80 juta, nyicilnya 6 juta lebih sebulan, selama 2 tahun',
   'ada juga yang diminta jaminan sertifikat rumah.|itu tanda bahaya',
@@ -47,19 +47,19 @@ const CAP = [
   'atau pilih jalur lain:|TG mandiri, tanpa LPK.|belajar bahasa dan ikut ujian sendiri, biaya resminya mulai 8 jutaan',
   'mau dibimbing jalur TG mandiri?|klik link di bio',
 ];
-// [mulai, selesai] tiap potongan ucapan, dari VO asli "Konten 13 oktober" (47,07 dtk) lewat
-// ffmpeg silencedetect=n=-38dB:d=0.25. Ganti kalau VO dibuat ulang.
+// [mulai, selesai] tiap potongan ucapan, dari VO asli "150jt hook" (48,20 dtk; take ke-2, hook
+// diucapkan lebih padat) lewat ffmpeg silencedetect=n=-38dB:d=0.2. Ganti kalau VO dibuat ulang.
 const SEGT = [
-  [[0, 1.74], [2.11, 3.59], [4.23, 6.88]],
-  [[7.56, 9.49], [9.89, 14.26], [14.67, 17.21]],
-  [[17.54, 19.09], [19.38, 24.80]],
-  [[25.12, 27.57], [27.88, 29.14]],
-  [[29.47, 34.98]],
-  [[35.26, 36.59], [36.88, 38.88], [39.13, 43.74]],
-  [[43.99, 45.63], [45.95, 47.07]],
+  [[0, 3.15], [3.74, 5.98]],
+  [[6.54, 8.74], [9.22, 13.62], [14.14, 16.73]],
+  [[17.14, 18.80], [19.26, 25.03]],
+  [[25.44, 27.97], [28.30, 29.60]],
+  [[29.95, 35.82]],
+  [[36.13, 37.47], [37.80, 39.82], [40.17, 44.77]],
+  [[45.09, 46.78], [47.10, 48.20]],
 ];
 let PARA = SEGT.map((p) => p[0][0]);
-let DUR = 47.6;
+let DUR = 48.7;
 // Adegan: paragraf + kata pemicu di paragraf itu (posisi huruf, sama dengan caption).
 const SCENES = [
   { p: 0, cue: null, f: hook },
