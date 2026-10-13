@@ -124,6 +124,7 @@
 .savings-grid span{font-size:12px;letter-spacing:.1em;color:#ff94a3}
 .savings-grid h3{font-size:19px;line-height:1.4;margin:10px 0 10px;color:white}
 .savings-grid p{font-size:15px;line-height:1.8;color:#e5e9f0}
+.savings-grid--two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .savings .story-bridge p{max-width:720px}
 
 /* Paths (#jalur): one accordion per route; work routes first, study set apart and lighter. */
