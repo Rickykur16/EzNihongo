@@ -27,7 +27,9 @@ Jadi kuncinya: bahasa. Makin cepat kamu bisa, makin sedikit yang perlu kamu baya
 - "Sampai 150 juta", "6 jutaan sebulan sampai 2 tahun", "jaminan sertifikat rumah": PENGAKUAN
   warganet di komentar TikTok (screenshot dari pemilik), BUKAN data resmi. Naskah memakai
   "ada yang ngaku" / "ada yang", layar menulis "pengakuan warganet". Nama akun & nama LPK di
-  komentar SENGAJA tidak ditampilkan (komentar ditulis ulang tanpa identitas).
+  komentar SENGAJA tidak ditampilkan. Hook memakai SCREENSHOT asli (permintaan pemilik), dipotong
+  per komentar dengan avatar, nama akun, dan nama LPK/daerah DIPIKSELKAN (`komentar-1..3.jpg`;
+  file asli tidak di-commit).
 - Rp25–35 juta = rata-rata biaya pemagangan ke Jepang lewat LPK-SO menurut Kemnaker, termasuk
   ±4 bulan pelatihan, asrama & makan, paspor, visa, medical, dokumen (Kompas Ohayo Jepang,
   "Biaya Magang ke Jepang Lewat LPK SO, Antara Rp 25 Juta sampai Rp 35 Juta", ±Sep 2024).
