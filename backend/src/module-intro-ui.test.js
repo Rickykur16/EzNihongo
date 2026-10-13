@@ -132,3 +132,115 @@ test('completed kana assessment no longer shows the placement prompt', () => {
   });
   assert.doesNotMatch(output, /Sudah bisa membaca Hiragana/);
 });
+
+// ── Ringkasan modul v2 (tahap, isi bab, situasi) ─────────────────────
+const chapter = {
+  id: 'bab-12',
+  num: '12',
+  title: 'Te-form',
+  scenario: 'Menjelaskan urutan aktivitas sehari-hari (bangun → sarapan → berangkat).',
+  lessons: [
+    { id: 'kosakata', type: 'deck', title: 'Kosakata', deck: [
+      { japanese: '歌う', reading: 'うたう', indonesian: 'bernyanyi' },
+      { japanese: '泳ぐ', reading: 'およぐ', indonesian: 'berenang' },
+      { japanese: '泳ぐ', reading: 'およぐ', indonesian: 'berenang' },
+      { japanese: '', reading: 'x', indonesian: 'rusak' },
+    ] },
+    { id: 'kanji', type: 'kanji', title: 'Kanji', kanji: [
+      { character: '読', meaning_id: 'membaca' }, { character: '書', meaning_id: 'menulis' },
+    ] },
+    { id: 'tb-1', type: 'video', title: 'Tata Bahasa 1', grammar: [{ id: 'g1', pattern: '〜て、〜', meaning: 'Merangkai kegiatan. Kalimat kedua.' }] },
+    { id: 'tugas-1', type: 'grammar_task', title: 'Tugas 1' },
+    { id: 'tb-2', type: 'video', title: 'Tata Bahasa 2', grammar: [{ id: 'g2', pattern: '〜てから', meaning: 'Setelah melakukan.' }] },
+    { id: 'tugas-2', type: 'grammar_task', title: 'Tugas 2' },
+    { id: 'assignment', type: 'quiz', title: 'Assignment Bab 12' },
+  ],
+};
+
+test('stages stay in learning order and merge when grammar and practice alternate', () => {
+  const context = setupRenderer();
+  const steps = context.moduleLearningSteps(chapter);
+  const labels = JSON.parse(JSON.stringify(context.moduleIntroPhases(steps).map((phase) => phase.label)));
+  assert.deepEqual(labels, ['Kenali', 'Pelajari & latih', 'Uji']);
+
+  const tidy = { ...chapter, lessons: chapter.lessons.filter((l) => !['tb-2', 'tugas-1'].includes(l.id)) };
+  const tidyPhases = context.moduleIntroPhases(context.moduleLearningSteps(tidy));
+  assert.deepEqual(JSON.parse(JSON.stringify(tidyPhases.map((phase) => phase.label))), ['Kenali', 'Pahami', 'Latih', 'Uji']);
+  assert.deepEqual(JSON.parse(JSON.stringify(tidyPhases.flatMap((phase) => phase.items.map(({ step }) => step.lesson.id)))),
+    tidy.lessons.map((lesson) => lesson.id));
+});
+
+test('summary shows what the chapter teaches and opens the matching lesson', () => {
+  const output = setupRenderer({ 'bab-12:kosakata': true }).renderModuleIntro(chapter);
+  assert.match(output, /Yang kamu pelajari di bab ini/);
+  assert.match(output, /module-learn-num">2<\/span>\s*<span class="module-learn-kind">Kosakata/);
+  assert.match(output, /module-learn-num">2<\/span>\s*<span class="module-learn-kind">Kanji/);
+  assert.match(output, /module-learn-num">2<\/span>\s*<span class="module-learn-kind">Pola/);
+  assert.match(output, /onclick="selectLesson\('bab-12','kosakata'\)"[^>]*aria-label="2 kosakata/);
+  assert.match(output, /onclick="selectLesson\('bab-12','tb-1'\)"[^>]*aria-label="2 pola tata bahasa/);
+  assert.match(output, /〜て、〜<\/span><span class="d">Merangkai kegiatan\.<\/span>/);
+  assert.doesNotMatch(output, /Kalimat kedua/);
+  assert.match(output, /Pelajari &amp; latih/);
+  assert.match(output, /module-path-item\s+exam/);
+});
+
+test('practice counts come from drill attempts and stay hidden without them', () => {
+  const context = setupRenderer();
+  let output = context.renderModuleIntro(chapter);
+  assert.doesNotMatch(output, /sudah dilatih/);
+  assert.match(output, /Buka kosakata →/);
+
+  context._deckReadMastery = () => ({ items: {} });
+  context._deckSummary = (item) => ({ attempts: item.japanese === '歌う' ? 2 : 0 });
+  output = context.renderModuleIntro(chapter);
+  assert.match(output, /<b>1<\/b>\/2 kata sudah dilatih/);
+});
+
+test('scenario steps become a flow and the ring animates once per module', () => {
+  const context = setupRenderer({ 'bab-12:kosakata': true });
+  const first = context.renderModuleIntro(chapter);
+  assert.match(first, /<p class="scenario-box">Menjelaskan urutan aktivitas sehari-hari\.<\/p>/);
+  assert.match(first, /<span>bangun<\/span><em aria-hidden="true">→<\/em><span>sarapan<\/span>/);
+  assert.match(first, /<div class="module-intro ">/);
+  assert.match(context.renderModuleIntro(chapter), /<div class="module-intro no-anim">/);
+});
+
+test('summary does not show lesson or module durations', () => {
+  const timed = {
+    ...chapter,
+    totalMinutes: 109,
+    lessons: chapter.lessons.map((lesson) => ({ ...lesson, durationMinutes: 15 })),
+  };
+  const output = setupRenderer({ 'bab-12:kosakata': true }).renderModuleIntro(timed);
+  assert.doesNotMatch(output, /menit/);
+  assert.match(output, /Materi 2 dari 7 · Kanji · 2 kanji</);
+});
+
+test('N5 summary hides CEFR and topic and uses the N5 grammar labels', () => {
+  const context = setupRenderer({ 'bab-12:kosakata': true });
+  const module = { ...chapter, cefrLevel: 'A1-A2', jfTopic: 'Interaction' };
+  assert.match(context.renderModuleIntro(module), /CEFR A1-A2[\s\S]*Topik: Interaction/);
+
+  context.EzN5Copy = {
+    pattern: (value) => `N5 ${value}`,
+    meaning: (value) => `Arti ${value}`,
+  };
+  const output = context.renderModuleIntro(module);
+  assert.doesNotMatch(output, /CEFR|Topik:/);
+  assert.match(output, /<span class="p" lang="ja">N5 〜て、〜<\/span><span class="d">Arti Merangkai kegiatan\.<\/span>/);
+});
+
+test('quiz steps say whether they are a chapter exam, a level final or a kana placement test', () => {
+  const context = setupRenderer();
+  assert.match(context.renderModuleIntro(chapter), /module-path-meta">Ujian akhir bab</);
+
+  context.EzFinalExam = { isFinalModule: (module) => module.id === 'n5-final-exam' };
+  const final = context.renderModuleIntro({ id: 'n5-final-exam', num: '21', title: 'Ujian Akhir N5',
+    lessons: [{ id: 'final', type: 'quiz', title: 'Ujian Akhir N5' }] });
+  assert.match(final, /module-path-meta">Ujian akhir level</);
+  assert.doesNotMatch(final, /Ujian akhir bab/);
+
+  const kana = context.renderModuleIntro({ id: 'bab-1', num: '01', title: 'Hiragana',
+    lessons: [{ id: 'assignment-bab-1-hiragana', type: 'quiz', title: 'Tes Membaca Hiragana' }] });
+  assert.match(kana, /module-path-meta">Tes kemampuan</);
+});
