@@ -54,7 +54,7 @@
   <p class="footer-text">© 2026 <span class="footer-brand">EzNihongo</span>. · <a href="privacy.html">Kebijakan Privasi</a> · <a href="terms.html">Syarat &amp; Ketentuan</a></p>
 </footer>
 
-<script src="api-client.js?v=20260926-assignment-v2"></script>
+<script src="api-client.js?v=20261013-auth-guard"></script>
 <script>
   const GOOGLE_CLIENT_ID = '998431349663-20kog1i9aeln8d7c21r8bi1ha084078o.apps.googleusercontent.com';
   const STUDENT_RELEASE = '20260902-1';
@@ -98,10 +98,22 @@
   })();
 
   // ── Google Identity Services callback ──
+  let _authBusy = false;
+  function setAuthBusy(busy) {
+    _authBusy = busy;
+    const container = document.getElementById('google-btn-container');
+    container.inert = busy;
+    container.style.pointerEvents = busy ? 'none' : '';
+    container.setAttribute('aria-disabled', String(busy));
+    const cancel = document.getElementById('cancel-profile');
+    if (cancel) cancel.disabled = busy;
+  }
   let _pendingCredential = null;
   let _pendingGoogleName = '';
 
   async function handleGoogleCredential(response) {
+    if (_authBusy) return;
+    setAuthBusy(true);
     clearError();
     const credential = response.credential;
     document.getElementById('signin-status').textContent = 'Memverifikasi akun...';
@@ -109,6 +121,7 @@
       await ezLoginWithGoogle(credential);
       location.replace(getNextUrl());
     } catch (err) {
+      setAuthBusy(false);
       if (err.code === 'profile_required') {
         _pendingCredential = credential;
         _pendingGoogleName = err.googleName || '';
@@ -129,15 +142,18 @@
 
   document.getElementById('profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (_authBusy) return;
     clearError();
     const fullName = document.getElementById('full-name').value.trim();
     if (!fullName) { showError('Nama harus diisi.'); return; }
     const btn = e.target.querySelector('.auth-submit-btn');
+    setAuthBusy(true);
     btn.disabled = true; btn.textContent = 'Menyimpan...';
     try {
       await ezLoginWithGoogle(_pendingCredential, fullName);
       location.replace(getNextUrl());
     } catch (err) {
+      setAuthBusy(false);
       btn.disabled = false; btn.textContent = 'Lanjutkan';
       showError('Gagal simpan profil: ' + (err.message || 'coba lagi'));
     }

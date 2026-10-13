@@ -229,7 +229,7 @@
   </div>
 
   <script src="analytics.js"></script>
-  <script src="api-client.js"></script>
+  <script src="api-client.js?v=20261013-auth-guard"></script>
   <script src="nav.js"></script>
   <script>
     const GOOGLE_CLIENT_ID = '998431349663-20kog1i9aeln8d7c21r8bi1ha084078o.apps.googleusercontent.com';
@@ -269,6 +269,16 @@
       } catch { return ''; }
     }
 
+    let _authBusy = false;
+    function setAuthBusy(busy) {
+      _authBusy = busy;
+      const container = document.getElementById('google-btn-container');
+      container.inert = busy;
+      container.style.pointerEvents = busy ? 'none' : '';
+      container.setAttribute('aria-disabled', String(busy));
+      const cancel = document.getElementById('cancel-profile');
+      if (cancel) cancel.disabled = busy;
+    }
     let _pendingCredential = null;
 
     // For returning users (kanji_users row already exists), skip the name-
@@ -276,6 +286,8 @@
     // 400 { error: 'profile_required', googleName } only when no row exists yet
     // — that's the signal to show the form for first-time users.
     async function handleGoogleCredential(response) {
+      if (_authBusy) return;
+      setAuthBusy(true);
       clearError();
       _pendingCredential = response.credential;
       document.getElementById('google-btn-container').style.display = 'none';
@@ -289,6 +301,7 @@
         } catch {}
         location.replace(getRedirect());
       } catch (err) {
+        setAuthBusy(false);
         if (err && err.code === 'profile_required') {
           // First-time user — ask for display name.
           document.getElementById('signin-status').textContent = '';
@@ -305,6 +318,7 @@
     }
 
     document.getElementById('cancel-profile').addEventListener('click', () => {
+      if (_authBusy) return;
       _pendingCredential = null;
       document.getElementById('step-profile').style.display = 'none';
       document.getElementById('google-btn-container').style.display = 'flex';
@@ -313,11 +327,13 @@
 
     document.getElementById('profile-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (_authBusy) return;
       clearError();
       const fullName = document.getElementById('full-name').value.trim();
       if (!fullName) { showError('Nama harus diisi.'); return; }
       if (!_pendingCredential) { showError('Sesi Google tidak ditemukan. Coba lagi.'); return; }
       const btn = e.target.querySelector('.submit-btn');
+      setAuthBusy(true);
       btn.disabled = true; btn.textContent = 'Menyimpan...';
       try {
         await ezLoginWithGoogle(_pendingCredential, fullName);
@@ -327,6 +343,7 @@
         } catch {}
         location.replace(getRedirect());
       } catch (err) {
+        setAuthBusy(false);
         btn.disabled = false; btn.textContent = 'Lanjutkan';
         showError('Gagal masuk: ' + (err.message || 'coba lagi'));
       }
