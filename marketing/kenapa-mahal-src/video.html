@@ -394,6 +394,7 @@ function mandiri(lt, d) {
 // 7. Penutup: logo + ajakan bimbingan SSW mandiri lewat link di bio.
 function cta(lt, d) {
   bgGlow('rgba(255,255,255,.12)', 'rgba(40,40,40,.25)', W / 2, 760, 1000);
+  if (OVERLAY) { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); } // footage Tokyo ramai: teks harus tetap terbaca
   dust(lt, 31, 'rgba(255,255,255,', 40);
   const k = eOut(P(lt, 0, .4));
   ctx.save(); ctx.globalAlpha = k; ctx.translate(W / 2, 560 + (1 - k) * 60); ctx.rotate(-.02);
