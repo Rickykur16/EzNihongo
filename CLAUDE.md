@@ -126,6 +126,25 @@
   jelas. Keputusan lebih tenang."), "Tiga hal yang perlu kamu ketahui", "bukan sekadar".
   Cek em dash pakai python (hitung '\u2014'); `grep "[—–]"` membaca per byte dan hasilnya palsu.
 
+- **Ringkasan modul (`renderModuleIntro` di welcome.html) didesain ulang** — user: "buat bagian
+  ringkasan modul memiliki ui/ux yang menarik, informatif", disetujui lewat mockup. Urutan: header
+  (chip level + CEFR, cincin progres), satu kartu navy "Lanjut dari sini" (fokus tunggal), "Yang kamu
+  pelajari di bab ini" (kartu Kosakata/Kanji/Huruf/Pola dari payload kelas yang SUDAH dimuat, tanpa
+  request baru), "Setelah selesai, kamu bisa" + "Situasi latihan" (teks `(a → b → c)` di skenario
+  dipecah jadi chip alur), lalu "Alur modul" per tahap Kenali/Pahami/Latih/Uji. **Tahap hanya
+  tampilan**: urutan tetap `moduleLearningSteps()`; kalau Tata Bahasa dan Tugas Bunpou berselang-seling
+  (Bab 12-20), Pahami+Latih digabung jadi "Pelajari & latih" supaya label tidak berulang. **"Sudah
+  dilatih" = pernah dicoba di drill** (`_deckSummary`/`_kanjiSummary`/`_kanaSummary` `attempts > 0`,
+  sinyal yang sama dengan gerbang selesai), BUKAN hafal; tanpa percobaan kartu hanya menampilkan tautan.
+  **Durasi SENGAJA tidak ditampilkan** di ringkasan (user: "Durasi ga usah") — sidebar tetap. Jumlah
+  soal/nilai lulus Assignment tidak ada di payload kelas, jadi kartu ujian cuma "Ujian akhir bab".
+  N5 mengikuti `EzN5Copy` (#453): CEFR & Topik disembunyikan, label pola/arti lewat
+  `EzN5Copy.pattern()`/`.meaning()`. Cincin & bar dianimasikan sekali per modul per pemuatan halaman
+  (`globalThis.__moduleIntroAnimated`), mati di reduced motion. Tes: `module-intro-ui.test.js`.
+  **Belum diverifikasi**: Safari/iOS dan data produksi (diuji Chromium dengan fixture Bab 12 dari migrasi
+  070/081). Jebakan: screenshot full-page Playwright membuat sidebar kiri welcome.html tampak rusak dan
+  bilah navigasi HP muncul di tengah — artefak, identik di main.
+
 - **Statistik kunjungan website buatan sendiri (migrasi 204)** — user: "Apakah kunjungan
   website bisa di tracking?" lalu "Oke buatin". Tanpa cookie & tanpa pihak ketiga (sejalan
   dengan penolakan Midtrans/Moota). `site-analytics.js` (root, `defer`) dimuat di index.html,
