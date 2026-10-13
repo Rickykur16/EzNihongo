@@ -4,7 +4,8 @@ python3 compose.py <dir-overlay> <dir-footage> <keluaran.mp4> [vo.mp3 sfx.wav]
 
 - <dir-overlay>: hasil `OVERLAY=1 node render.mjs <dir> full` (f0000.png.. + scenes.json).
 - <dir-footage>: b1..b7 dengan ekstensi .mp4/.mov/.jpg/.jpeg/.png (foto boleh, digerakkan pelan).
-  Footage yang lebih pendek dari adegannya diulang.
+  Footage yang lebih pendek dari adegannya diulang. Kalau ada b6b (dst), adegan itu dibagi dua:
+  paruh pertama b6, paruh kedua b6b.
 Footage di-grade gelap (kontras naik, saturasi turun, bayangan teal, sorotan oranye), didorong
 pelan (zoom 6% -> 10%), lalu grafik ditaruh di atasnya, ditambah vinyet & butiran film.
 """
@@ -18,28 +19,35 @@ scenes = meta['scenes']
 scenes[-1]['b'] = meta['dur']
 
 
-def src(i):
+def src(name, required=True):
     for ext in ('mp4', 'mov', 'jpg', 'jpeg', 'png'):
-        f = os.path.join(fdir, f'b{i}.{ext}')
+        f = os.path.join(fdir, f'{name}.{ext}')
         if os.path.exists(f):
             return f, ext in ('jpg', 'jpeg', 'png')
-    sys.exit(f'footage b{i} tidak ada di {fdir}')
+    if required:
+        sys.exit(f'footage {name} tidak ada di {fdir}')
+    return None
 
 
-args, chains = ['ffmpeg', '-y', '-loglevel', 'error'], []
+args, chains, parts = ['ffmpeg', '-y', '-loglevel', 'error'], [], []
 frames = [round(s['a'] * FPS) for s in scenes] + [round(meta['dur'] * FPS)]
-for i, s in enumerate(scenes):
-    f, still = src(i + 1)
+for i in range(len(scenes)):
     n = frames[i + 1] - frames[i]
-    d = n / FPS
-    args += (['-loop', '1', '-framerate', str(FPS)] if still else ['-stream_loop', '-1']) + ['-t', f'{d + .5:.3f}', '-i', f]
-    chains.append(
-        f"[{i}:v]fps={FPS},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-        f"scale=w='trunc({W}*(1.06+0.04*t/{d:.3f})/2)*2':h=-2:eval=frame,crop={W}:{H},setsar=1,"
-        f"eq=contrast=1.18:brightness=-0.09:saturation=0.78,"
-        f"colorbalance=rs=-0.05:bs=0.07:rh=0.07:bh=-0.05,"
-        f"trim=end_frame={n},setpts=PTS-STARTPTS,format=yuv420p[s{i}]")
-k = len(scenes)
+    second = src(f'b{i + 1}b', required=False)
+    pieces = [(src(f'b{i + 1}'), n // 2 if second else n)] + ([(second, n - n // 2)] if second else [])
+    for (f, still), m in pieces:
+        d, idx = m / FPS, len(parts)
+        args += (['-loop', '1', '-framerate', str(FPS)] if still else ['-stream_loop', '-1']) + ['-t', f'{d + .5:.3f}', '-i', f]
+        # foto: zoom lebih terasa (Ken Burns), video: dorong pelan saja
+        z0, dz = (1.02, .12) if still else (1.06, .04)
+        chains.append(
+            f"[{idx}:v]fps={FPS},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+            f"scale=w='trunc({W}*({z0}+{dz}*t/{d:.3f})/2)*2':h=-2:eval=frame,crop={W}:{H},setsar=1,"
+            f"eq=contrast=1.18:brightness=-0.09:saturation=0.78,"
+            f"colorbalance=rs=-0.05:bs=0.07:rh=0.07:bh=-0.05,"
+            f"trim=end_frame={m},setpts=PTS-STARTPTS,format=yuv420p[s{idx}]")
+        parts.append(idx)
+k = len(parts)
 args += ['-framerate', str(FPS), '-i', os.path.join(ov, 'f%04d.png')]
 chains.append(''.join(f'[s{i}]' for i in range(k)) + f'concat=n={k}:v=1:a=0[bg]')
 chains.append(f'[bg][{k}:v]overlay=format=auto,vignette=angle=PI/4.2,noise=alls=7:allf=t,format=yuv420p[v]')

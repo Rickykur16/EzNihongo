@@ -20,3 +20,25 @@ menuduh orang/lembaga nyata).
 | 7 | 40–44 | Penutup: link di bio | `tokyo street night`, `shibuya crossing slow motion` | Jepang, megah |
 
 Simpan dengan nama `b1.mp4` … `b7.mp4` sesuai nomor baris.
+
+## Dipakai di draf pertama (13 Okt 2026): 8 foto dari pemilik
+
+Pemilik mengirim screenshot hasil pencarian gambar. Foto dipotong 9:16 dari screenshot itu,
+diperbesar ke 1080×1920, lalu di-zoom pelan oleh `compose.py`. Foto TIDAK di-commit (hak cipta
+sumbernya belum jelas); simpan lokal sebagai `b1.jpg` dst.
+
+| File | Isi | Sumber di screenshot |
+|---|---|---|
+| b1 | tangan menghitung uang dolar, latar hitam | tanpa nama situs (stok) |
+| b2 | serah terima uang malam hari | musavat.com |
+| b3 | pria pusing memegang tagihan "PAST DUE" | consumeraffairs.com |
+| b4 | serah terima kunci rumah | tanpa nama situs ("Real estate agent handing over house k…") |
+| b5 | tangan mengetik laptop, cahaya biru | tanpa nama situs ("Close Up Of Woman Using Laptop At H…") |
+| b6 | pemuda belajar dengan lampu meja malam | mentalidades.mx |
+| b6b | jendela pesawat, matahari terbit di atas awan | hospitalityonline.com |
+| b7 | jalanan Shinjuku/Kabukicho malam | getaroundjapan.jp |
+
+Catatan: (1) foto dari situs berita/blog belum tentu boleh dipakai ulang untuk iklan; untuk
+versi yang diposting, lebih aman ganti dengan foto Pexels yang mirip (kata kunci di tabel atas).
+(2) Uang di b1/b2 dolar, bukan rupiah. (3) Resolusi asli ±780 px tinggi → diperbesar ±2,5×,
+jadi agak lembut; butiran film + grade gelap menyamarkannya.
