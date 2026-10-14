@@ -4887,6 +4887,7 @@
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
+<link rel="stylesheet" href="styles/conversation-steps.css?v=20261014-1">
 <link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
 <script src="maneko.js?v=20261009-header-focus"></script>
@@ -4989,6 +4990,7 @@ function getUserName(user = session) {
 <script src="assets/dialogue/catalog.js?v=1"></script>
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
+<script src="src/conversation-steps.js?v=20261014-1"></script>
 <script src="src/dialogue-questions.js?v=20261009-selection"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script src="src/bunny-video.js?v=20261008-1"></script>
@@ -9149,6 +9151,7 @@ function renderConversationLesson(course, module, lesson, nav) {
   const source = conversationSource(module, lesson);
   const dialogs = lessonDialogues(source);
   const { prev, next, isDone } = nav;
+  const stepped = typeof currentState !== 'undefined' && ['n5', 'n4'].includes(currentState.course);
   const root = document.getElementById('main-content');
   const linkedTask = source && next?.module === module &&
     taskSourceLesson(module, next.lesson) === source ? next : null;
@@ -9159,10 +9162,12 @@ function renderConversationLesson(course, module, lesson, nav) {
     <p class="lesson-subtitle">${escapeHtml(module.title)} · Dengarkan, baca, lalu cek pemahamanmu.</p>
     ${lesson.body ? `<div class="lesson-body"><p>${lesson.body}</p></div>` : ''}
     <div class="dq-legacy-session-slot" hidden></div>
-    ${dialogs.length ? `<div class="grammar-list">
+    ${dialogs.length ? `<div class="${stepped ? 'conversation-steps' : ''}">
+      ${stepped ? '<p class="conversation-position" data-conversation-position role="status" aria-live="polite"></p>' : ''}
+      <div class="grammar-list">
       ${dialogs.map((grammar, index) => `
-        <section class="lesson-extra-card grammar-card" data-grammar-id="${escapeHtml(grammar.id || '')}">
-          <h2 class="grammar-pattern">${escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.pattern(grammar.pattern || `Percakapan ${index + 1}`) : (grammar.pattern || `Percakapan ${index + 1}`))}</h2>
+        <section class="lesson-extra-card grammar-card${stepped ? ' conversation-step' : ''}" data-grammar-id="${escapeHtml(grammar.id || '')}">
+          <h2 class="grammar-pattern" ${stepped ? 'tabindex="-1"' : ''}>${escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.pattern(grammar.pattern || `Percakapan ${index + 1}`) : (grammar.pattern || `Percakapan ${index + 1}`))}</h2>
           ${source.bunpouFlow?.directions?.[grammar.id] ? `<p class="grammar-listening-direction">🎧 ${escapeHtml(source.bunpouFlow.directions[grammar.id])}</p>` : ''}
           <div class="dq-goal" data-dq-goal-for="${escapeHtml(grammar.id || '')}" hidden></div>
           ${grammarKaraokeHtml(String(grammar.example_dialog).trim(), `g${index}`,
@@ -9170,16 +9175,25 @@ function renderConversationLesson(course, module, lesson, nav) {
           ${dialogueSelfChecksHtml(grammar)}
           <div class="dq-questions" data-dq-questions-for="${escapeHtml(grammar.id || '')}" hidden></div>
         </section>`).join('')}
+      </div>
+      ${stepped ? `<nav class="conversation-step-nav" aria-label="Urutan percakapan" hidden>
+        <button class="btn-secondary" type="button" data-conversation-prev>← Percakapan sebelumnya</button>
+        <button class="btn-primary" type="button" data-conversation-next>Percakapan berikutnya →</button>
+      </nav>` : ''}
     </div>` : '<p class="lesson-empty" style="color:#737373;">Dialog untuk pelajaran ini belum tersedia.</p>'}
     <div class="lesson-footer">
       <button class="btn-secondary" type="button" ${!prev ? 'disabled' : ''}
         onclick="${learningStepAction(prev)}">← Sebelumnya</button>
-      <button class="btn-primary" type="button" onclick="markCompleteAndNext(this)">
+      <button class="btn-primary conversation-lesson-complete" type="button" onclick="markCompleteAndNext(this)">
         ${isDone ? (next ? `Lanjut${nextLabel ? ' ke ' + nextLabel : ''} →` : 'Selesai ✓')
           : (next ? `Tandai Selesai & Lanjut${nextLabel ? ' ke ' + nextLabel : ''} →` : 'Tandai Selesai ✓')}
       </button>
     </div>`;
   if (!dialogs.length) return;
+  window.EzConversationSteps?.mount?.(root, { onLeave: card => {
+    const player = card.querySelector('.grammar-karaoke');
+    if (player) gkStopOne(player.id.replace(/^gk-/, ''));
+  } });
   // Scenes used to mount only when a collapsible grammar block opened; this
   // page has no such block, so it mounts them itself.
   window.EzDialogue?.enhance?.(root);
