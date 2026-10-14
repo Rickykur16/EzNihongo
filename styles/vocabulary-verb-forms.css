@@ -4,9 +4,7 @@
 .dv-word { font-family: 'Noto Sans JP', sans-serif; font-size: 22px; line-height: 1.4; font-weight: 700; color: var(--du-ink); overflow-wrap: anywhere; }
 .dv-reading { font-family: 'Noto Sans JP', sans-serif; font-size: 13px; line-height: 1.5; color: var(--brand-red); overflow-wrap: anywhere; }
 .dv-arrow { color: var(--du-ink-3); }
-.deck-card.has-verb-forms { padding-top: 44px; }
-.deck-card .deck-verb-forms { grid-template-columns: minmax(0, 1fr); gap: 7px; width: 100%; }
-.deck-card .dv-arrow { transform: rotate(90deg); line-height: 1; }
+.deck-card.has-verb-forms .dc-len { font-size: 10.5px; letter-spacing: 0; text-transform: none; opacity: .8; }
 .deck-list-item.has-verb-forms { flex-wrap: wrap; }
 .deck-list-item .deck-verb-forms { flex: 1 1 340px; }
 .deck-list-item.has-verb-forms .dli-meaning { flex: 1 1 120px; white-space: normal; }

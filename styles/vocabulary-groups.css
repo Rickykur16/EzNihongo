@@ -1,0 +1,13 @@
+.deck-type-group { margin: 0 0 28px; min-width: 0; }
+.deck-type-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px 12px; padding: 0 0 10px; margin-bottom: 12px; border-bottom: 1px solid var(--du-border); }
+.deck-type-title { margin: 0; font-size: 18px; line-height: 1.4; color: var(--du-ink); font-weight: 700; }
+.deck-type-jp { font-family: 'Noto Sans JP', sans-serif; font-size: 13px; color: var(--du-ink-3); }
+.deck-type-count { margin-left: auto; font-size: 12px; color: var(--du-ink-3); white-space: nowrap; }
+.deck-type-group .deck-grid { align-items: start; }
+.deck-type-group .deck-card { padding-top: 40px; min-height: 180px; }
+.deck-type-group[hidden] { display: none; }
+@media (max-width: 600px) {
+  .deck-type-title { font-size: 16px; }
+  .deck-type-head { gap: 5px 8px; }
+  .deck-type-group .deck-card { min-height: 168px; }
+}
