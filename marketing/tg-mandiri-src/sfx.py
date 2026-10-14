@@ -243,25 +243,38 @@ for c in cues:
     KIND[c[1]](c[0], c[2] if len(c) > 2 else None)
 
 # Jangkar musik = dentum logo pembuka & penutup (dari cue), jadi ikut timeline.
+booms = sorted(c[0] for c in cues if c[1] == 'boom')
+B0, B1 = booms[0], booms[-1]
 
-# ---- musik latar gelap: pad D minor + detak pelan (gaya sinematik referensi) ----
+# ---- musik latar tipis: pad + petikan ala koto (tangga nada yo: D E G A B) ----
 sfxL, sfxR = L.copy(), R.copy()
 L[:] = 0; R[:] = 0
 t = np.arange(N) / SR
-env = np.clip(t / 1.2, 0, 1) * np.clip((DUR - t) / 1.5, 0, 1)
+env = np.clip((t - (B0 - .3)) / 1.5, 0, 1) * np.clip((DUR - t) / 1.5, 0, 1)
 pad = np.zeros(N)
-for f, a in ((73.42, .55), (110.0, .4), (146.83, .35), (174.61, .25), (220.0, .18)):
-    for det in (-.5, .5):
-        pad += a * np.sin(2 * np.pi * (f + det) * t + rng.uniform(0, 6.28)) * (1 + .3 * np.sin(2 * np.pi * .09 * t + f))
-spec = np.fft.rfft(pad); spec[np.fft.rfftfreq(N, 1 / SR) > 700] = 0
+for f, a in ((73.42, .5), (146.83, .45), (220.0, .35), (329.63, .22), (369.99, .14)):
+    for det in (-.6, .6):
+        pad += a * np.sin(2 * np.pi * (f + det) * t + rng.uniform(0, 6.28)) * (1 + .25 * np.sin(2 * np.pi * .13 * t + f))
+spec = np.fft.rfft(pad); spec[np.fft.rfftfreq(N, 1 / SR) > 900] = 0
 pad = np.fft.irfft(spec, N) * env
-L += pad * .07; R += pad * .07
-tb = 1.0
-while tb < DUR - 1.5:
-    for dt, g in ((0, .28), (.22, .16)):
-        tk = tt(.35); f = 48 + 40 * np.exp(-tk * 25)
-        add(tb + dt, np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tk * 9), g)
-    tb += 60 / 72
+L += pad * .05; R += pad * .05
+
+beat = 60 / 100  # 100 BPM
+pattern = [293.66, 440.0, 493.88, 440.0, 392.0, 293.66, 329.63, 293.66]
+k = 0
+tb = B0 + 2.4
+while tb < B1 - .7:
+    if k % 8 not in (3, 7):
+        f = pattern[k % 8] * (2 if (k // 16) % 2 else 1)
+        add(tb, pluck(f, 1.2, .995), .085, pan=-.35 if k % 2 else .35)
+    tb += beat / 2 if k % 4 == 1 else beat
+    k += 1
+# frasa penutup (logo akhir)
+for dt, f in ((B1, 146.83), (B1, 293.66), (B1 + .15, 440.0), (B1 + .3, 587.33), (B1 + .55, 659.25), (B1 + .8, 587.33)):
+    add(dt, pluck(f, 2.5, .998), .13, pan=rng.uniform(-.3, .3))
+for dt, f in ((B0, 146.83), (B0, 293.66), (B0 + .15, 440.0), (B0 + .3, 587.33)):
+    add(dt, pluck(f, 2.0, .998), .12, pan=rng.uniform(-.3, .3))
+
 L += sfxL; R += sfxR
 fade = np.clip((DUR - t) / .8, 0, 1)
 L *= fade; R *= fade
