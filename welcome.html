@@ -4993,7 +4993,7 @@ function getUserName(user = session) {
 <script src="src/bunny-video.js?v=20261008-1"></script>
 <script src="src/bunny-player.js?v=20261008-1"></script>
 <script src="final-exam.js?v=20261003-4"></script>
-<script src="src/n5-learning-copy.js?v=20261013-1"></script>
+<script src="src/n5-learning-copy.js?v=20261014-chapter-order"></script>
 <script src="src/vocabulary-verb-display.js?v=20261014-1"></script>
 <script>
 // ═══════════════════════════════════════════════
@@ -7919,7 +7919,8 @@ window.openVocabList = async () => {
   if (slug !== 'n4') try {
     const res = await fetch(`/api/notion-vocab?slug=${encodeURIComponent(slug)}`);
     if (res.ok) {
-      const data = await res.json();
+      const sourceData = await res.json();
+      const data = globalThis.EzN5Copy?.prepareVocabularyReference(sourceData, course) || sourceData;
       lastSyncedAt = data.fetchedAt || null;
       const mapVocab = (vocab) => (vocab || []).map((v, i) => ({
         id: v.id || ('notion-' + i),

@@ -4,7 +4,7 @@ import { deriveCompounds } from './kanji-compounds.js';
 
 const chapterKanji = [[4,'魚本花'],[5,'八三十九一五四二六七'],[6,'安高古新白長'],[7,'男女気'],
   [8,'下前外間右中左後上'],[9,'車東道駅行西電北南'],[10,'見読書'],[11,'年百午半週万千毎'],
-  [12,'食飲'],[13,''],[14,'立休入出'],[15,'言話聞買店円会社'],[16,'日月火水木金土時分'],
+  [12,'食飲'],[13,'立休入出'],[14,''],[15,'言話聞買店円会社'],[16,'日月火水木金土時分'],
   [17,'子父母友手足口目耳'],[18,'大小多少'],[19,'雨天空山川'],[20,'来令']];
 const uses = (character, chapter, vocabulary = []) => deriveCompounds(character, [], vocabulary, {
   courseLevel: 'N5', moduleSort: chapter,
@@ -45,4 +45,6 @@ test('curated support is scoped to existing N5 chapter assignments', () => {
   assert.deepEqual(uses('魚', 20), []);
   assert.deepEqual(uses('魚', 13), []);
   assert.equal(uses('先', 3)[0].japanese, '先生');
+  assert.ok(uses('休', 13).length, 'former Bab 14 kanji follows the plain-form chapter to position 13');
+  assert.deepEqual(uses('休', 14), [], 'new Bab 14 must not inherit the other chapter support set');
 });
