@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Tutorial TG mandiri</title>
+<!--
+  Video TikTok 9:16 "Tutorial TG mandiri: 7 langkah tanpa LPK" (14 Okt 2026). Gaya sama dengan
+  ../kenapa-mahal-src (gelap sinematik, caption kecil per potongan kata, kilatan putih, zoom),
+  tapi SEMUA B-roll digambar sendiri di <canvas> (video LPK sebelumnya kena label "AI-generated"
+  TikTok gara-gara foto). Tiap langkah = kartu bernomor + bilah progres 7 langkah di atas.
+  Waktu: SEGT = [mulai, selesai] tiap potongan ucapan (dari jeda VO, lihat README).
+  ?overlay=1 = mode footage (compose.py), sama seperti video LPK.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Courier+Prime:wght@400;700&display=block" rel="stylesheet">
+<style>
+  html,body{margin:0;background:#000}
+  canvas{display:block;width:1080px;height:1920px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<img id="logo" src="logo-a.png" style="display:none">
+<script>
+'use strict';
+const OVERLAY = new URLSearchParams(location.search).has('overlay');
+if (OVERLAY) document.documentElement.style.background = document.body.style.background = 'transparent';
+// ---------------------------------------------------------------- naskah & waktu
+// "|" = batas potongan ucapan (jeda di VO asli). Waktu tiap potongan ada di SEGT.
+const VO = [
+  'Save video ini kalau kamu lagi cari tahu cara TG mandiri. Ada tujuh langkah, tanpa LPK.',
+  'Satu, pilih bidang kerjanya dulu. Misalnya perawat lansia, pabrik makanan, atau konstruksi.',
+  'Dua, lulus ujian bahasa. JFT-Basic, atau JLPT N4.',
+  'Tiga, lulus ujian keterampilan sesuai bidang yang kamu pilih.',
+  'Empat, cari perusahaan di Jepang, ikut wawancara, lalu tanda tangan kontrak kerja.',
+  'Lima, perusahaan mengurus COE, yaitu izin dari imigrasi Jepang.',
+  'Enam, daftar sebagai pekerja migran di SISKOP2MI, lalu ikut orientasi sebelum berangkat.',
+  'Tujuh, ajukan visa di Kedutaan Jepang.',
+  'Mau dibimbing dari langkah pertama? Klik link di bio.'
+];
+// Teks caption = VO, kecuali angka yang dibaca huruf ditampilkan sebagai angka.
+const CAP = [
+  'save video ini kalau kamu lagi cari tahu cara TG mandiri. ada 7 langkah, tanpa LPK',
+  'satu, pilih bidang kerjanya dulu. misalnya perawat lansia, pabrik makanan, atau konstruksi',
+  'dua, lulus ujian bahasa. JFT-Basic, atau JLPT N4',
+  'tiga, lulus ujian keterampilan sesuai bidang yang kamu pilih',
+  'empat, cari perusahaan di Jepang, ikut wawancara, lalu tanda tangan kontrak kerja',
+  'lima, perusahaan mengurus COE, yaitu izin dari imigrasi Jepang',
+  'enam, daftar sebagai pekerja migran di SISKOP2MI, lalu ikut orientasi sebelum berangkat',
+  'tujuh, ajukan visa di Kedutaan Jepang',
+  'mau dibimbing dari langkah pertama? klik link di bio'
+];
+// SEMENTARA: perkiraan 2,7 kata/dtk, satu potongan per paragraf. Ganti dengan jeda VO asli
+// (ffmpeg silencedetect=n=-38dB:d=0.25), potong paragraf dengan "|" bila perlu.
+const SEGT = [[[0, 5.93]], [[6.33, 10.77]], [[11.17, 14.13]], [[14.53, 17.87]], [[18.27, 22.71]], [[23.11, 26.44]], [[26.84, 31.29]], [[31.69, 33.91]], [[34.31, 37.64]]];
+let PARA = SEGT.map((p) => p[0][0]);
+let DUR = 38.3;
+// Adegan: paragraf + kata pemicu di paragraf itu.
+const SCENES = [
+  { p: 0, cue: null, f: hook },
+  { p: 1, cue: null, f: (lt, d) => step(1, lt, d) },
+  { p: 2, cue: null, f: (lt, d) => step(2, lt, d) },
+  { p: 3, cue: null, f: (lt, d) => step(3, lt, d) },
+  { p: 4, cue: null, f: (lt, d) => step(4, lt, d) },
+  { p: 5, cue: null, f: (lt, d) => step(5, lt, d) },
+  { p: 6, cue: null, f: (lt, d) => step(6, lt, d) },
+  { p: 7, cue: null, f: (lt, d) => step(7, lt, d) },
+  { p: 8, cue: null, f: cta },
+];
+function paraEnd(p) { return p + 1 < PARA.length ? PARA[p + 1] : DUR; }
+// Waktu sebuah kata di VO: cari potongan ucapannya, lalu proporsi huruf di dalam potongan itu.
+function cueTime(p, word) {
+  if (!word) return PARA[p];
+  const segs = VO[p].split('|');
+  for (let k = 0; k < segs.length; k++) {
+    const i = segs[k].indexOf(word); if (i < 0) continue;
+    const [a, b] = SEGT[p][k];
+    return a + (b - a) * (i / segs[k].length);
+  }
+  return PARA[p];
+}
+function sceneTimes() {
+  return SCENES.map((s, i) => {
+    const a = cueTime(s.p, s.cue);
+    const b = i + 1 < SCENES.length ? cueTime(SCENES[i + 1].p, SCENES[i + 1].cue) : DUR;
+    return { ...s, a, b };
+  });
+}
+// Potongan caption 1–3 kata per potongan ucapan, waktunya menurut proporsi huruf. Caption
+// terakhir sebuah potongan bertahan melewati jeda pendek (<0,8 dtk) supaya tidak berkedip.
+function captionChunks() {
+  const out = [];
+  CAP.forEach((text, p) => text.split('|').forEach((seg, k) => {
+    const words = seg.split(' ');
+    const chunks = []; let cur = [];
+    words.forEach((w) => {
+      cur.push(w);
+      const len = cur.join(' ').length;
+      if ((len >= 11 && !/^(Rp)?[0-9]/.test(w)) || /[.,?!:]$/.test(w) || cur.length === 3) { chunks.push(cur.join(' ')); cur = []; }
+    });
+    if (cur.length) chunks.push(cur.join(' '));
+    const total = chunks.reduce((s, c) => s + c.length + 2, 0);
+    const [a0, b0] = SEGT[p][k], span = b0 - a0;
+    let acc = 0;
+    chunks.forEach((c) => {
+      const a = a0 + span * acc / total; acc += c.length + 2;
+      out.push({ text: c.replace(/[.,:]$/, ''), a, b: a0 + span * acc / total });
+    });
+  }));
+  out.forEach((c, i) => { const n = out[i + 1]; if (n && n.a - c.b < .8) c.b = n.a; else c.b += .25; });
+  return out;
+}
+
+// ---------------------------------------------------------------- utilitas
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = 1080, H = 1920;
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const P = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = (x) => 1 - Math.pow(1 - x, 3);
+const eIn = (x) => x * x * x;
+const eIO = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = (x) => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+function rnd(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const RED = '#e3262c', GOLD = '#f2c14e', CREAM = '#f3ead8', TEAL = '#38d6d0';
+function font(w, px, fam = 'Inter') { ctx.font = `${w} ${px}px ${fam}`; }
+function text(s, x, y, { w = 800, px = 60, color = '#fff', align = 'center', fam = 'Inter', ls = 0, alpha = 1, shadow = 0 } = {}) {
+  ctx.save(); font(w, px, fam); ctx.textAlign = align; ctx.textBaseline = 'middle';
+  ctx.globalAlpha *= alpha; ctx.fillStyle = color;
+  if (ls) ctx.letterSpacing = ls + 'px';
+  if (shadow) { ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = shadow; }
+  ctx.fillText(s, x, y); ctx.restore();
+}
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+// Label kotak (merah/putih) seperti chip.
+function chip(s, x, y, { px = 44, bg = RED, color = '#fff', w = 900, alpha = 1, pad = 22 } = {}) {
+  ctx.save(); ctx.globalAlpha *= alpha; font(w, px); const tw = ctx.measureText(s).width;
+  ctx.fillStyle = bg; rrect(x - tw / 2 - pad, y - px * .72, tw + pad * 2, px * 1.44, 10); ctx.fill();
+  ctx.restore(); text(s, x, y + px * .04, { w, px, color, alpha });
+}
+// Muncul: skala dari 0.7 + fade, dengan sedikit pantulan.
+function popIn(t, a, draw, d = .32) {
+  const k = P(t, a, a + d); if (k <= 0) return;
+  ctx.save(); ctx.globalAlpha *= clamp(k * 2); const s = .7 + .3 * back(k);
+  draw(s); ctx.restore();
+}
+function scaled(cx, cy, s, fn) { ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s); ctx.translate(-cx, -cy); fn(); ctx.restore(); }
+
+// Butiran film: 6 bingkai noise kecil yang digilir.
+const GRAIN = Array.from({ length: 6 }, (_, k) => {
+  const c = document.createElement('canvas'); c.width = 270; c.height = 480;
+  const g = c.getContext('2d'), im = g.createImageData(270, 480), r = rnd(99 + k);
+  for (let i = 0; i < im.data.length; i += 4) { const v = r() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 22; }
+  g.putImageData(im, 0, 0); return c;
+});
+
+// ---------------------------------------------------------------- latar
+// Mode footage: tanpa latar hitam, cahaya warna jadi tint tipis di atas footage.
+function bgGlow(c1, c2, cx = W / 2, cy = 760, r = 1100) {
+  if (!OVERLAY) { ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H); }
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, c1); g.addColorStop(.55, c2); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save(); if (OVERLAY) ctx.globalAlpha = .35; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+}
+function dust(t, seed, color = 'rgba(255,220,160,', n = 70) {
+  const r = rnd(seed);
+  for (let i = 0; i < n; i++) {
+    const x = r() * W, y0 = r() * H, sp = 15 + r() * 40, s = 1 + r() * 3.2, ph = r() * 6;
+    const y = (y0 - t * sp + H * 4) % H;
+    ctx.fillStyle = color + (0.25 + .35 * Math.sin(t * 1.5 + ph) ** 2) + ')';
+    ctx.beginPath(); ctx.arc(x + Math.sin(t * .6 + ph) * 12, y, s, 0, 7); ctx.fill();
+  }
+}
+function rays(t, cx, cy, color, n = 14, alpha = .12) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * .05);
+  for (let i = 0; i < n; i++) {
+    ctx.rotate(Math.PI * 2 / n);
+    const g = ctx.createLinearGradient(0, 0, 0, -1500);
+    g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = alpha * (.6 + .4 * Math.sin(i * 2.1 + t));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-90, -1500); ctx.lineTo(90, -1500); ctx.lineTo(20, 0); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- adegan
+// Tiap adegan: f(lt, d, T) — lt = waktu lokal, d = durasi, T = waktu global.
+
+// Bilah progres 7 langkah di atas: yang sudah lewat putih, yang sedang dibahas teal & menyala.
+function progress(n, lt) {
+  const x0 = 150, gap = (W - 2 * x0) / 6, y = 190;
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(W - x0, y); ctx.stroke();
+  const fill = n > 1 ? (n - 2 + eOut(P(lt, 0, .5))) * gap : 0;
+  ctx.strokeStyle = TEAL; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + fill, y); ctx.stroke();
+  for (let i = 1; i <= 7; i++) {
+    const x = x0 + (i - 1) * gap, cur = i === n, done = i < n;
+    const r = cur ? 30 + 4 * Math.sin(lt * 5) : 22;
+    ctx.fillStyle = cur ? TEAL : done ? '#fff' : 'rgba(30,30,30,.95)';
+    ctx.strokeStyle = cur || done ? 'transparent' : 'rgba(255,255,255,.35)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+    text(String(i), x, y + 2, { w: 900, px: cur ? 30 : 24, color: cur || done ? '#06302e' : 'rgba(255,255,255,.6)' });
+  }
+}
+
+// Ikon garis sederhana (putih), digambar di sekitar (cx, cy) dengan ukuran s.
+function icon(kind, cx, cy, s = 1) {
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+  ctx.strokeStyle = '#fff'; ctx.fillStyle = '#fff'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (kind === 'care') {          // salib medis
+    ctx.moveTo(0, -30); ctx.lineTo(0, 30); ctx.moveTo(-30, 0); ctx.lineTo(30, 0);
+  } else if (kind === 'factory') { // pabrik + cerobong
+    ctx.moveTo(-34, 30); ctx.lineTo(-34, -6); ctx.lineTo(-12, 8); ctx.lineTo(-12, -6); ctx.lineTo(10, 8); ctx.lineTo(10, -30); ctx.lineTo(24, -30); ctx.lineTo(24, 30); ctx.closePath();
+  } else if (kind === 'helmet') {  // helm proyek
+    ctx.arc(0, 10, 30, Math.PI, 0); ctx.moveTo(-42, 12); ctx.lineTo(42, 12); ctx.moveTo(0, -20); ctx.lineTo(0, -8);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function tick(x, y, r, k = 1) {
+  ctx.save(); ctx.globalAlpha *= k; ctx.fillStyle = TEAL; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#06302e'; ctx.lineWidth = r * .22; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(x - r * .45, y); ctx.lineTo(x - r * .1, y + r * .38); ctx.lineTo(x + r * .48, y - r * .35); ctx.stroke();
+  ctx.restore();
+}
+// Kartu gelap transparan, muncul dari kiri.
+function card(x, y, w, h, k, fn) {
+  if (!k) return;
+  ctx.save(); ctx.globalAlpha *= clamp(k * 2); ctx.translate((1 - eOut(k)) * -90, 0);
+  ctx.fillStyle = 'rgba(8,24,26,.82)'; rrect(x, y, w, h, 24); ctx.fill();
+  ctx.strokeStyle = 'rgba(56,214,208,.45)'; ctx.lineWidth = 3; rrect(x, y, w, h, 24); ctx.stroke();
+  fn(); ctx.restore();
+}
+
+// 1. Hook: klaim lengkap SUDAH tampil di frame 0 (aturan catatan TikTok).
+function hook(lt, d) {
+  bgGlow('rgba(56,214,208,.42)', 'rgba(5,40,40,.4)', W / 2, 640, 1150);
+  rays(lt, W / 2, 640, 'rgba(160,255,250,.9)', 16, .1);
+  dust(lt, 3, 'rgba(200,255,250,', 70);
+  chip('TUTORIAL', W / 2, 330, { px: 52, bg: '#fff', color: '#111' });
+  const sh = lt < .8 ? Math.sin(lt * 60) * 5 * (1 - lt / .8) : 0;
+  text('7 LANGKAH', W / 2 + sh, 500, { w: 900, px: 170, color: GOLD, shadow: 30 });
+  text('TG MANDIRI', W / 2, 670, { w: 900, px: 130, color: TEAL, shadow: 30 });
+  text('Tokutei Ginou · tanpa LPK', W / 2, 790, { w: 700, px: 46, shadow: 16 });
+  // pratinjau 7 langkah: lingkaran bernomor menyala satu per satu
+  for (let i = 0; i < 7; i++) {
+    const x = 150 + i * 130, k = i === 0 ? 1 : P(lt, .5 + i * .22, .7 + i * .22);
+    ctx.fillStyle = k ? `rgba(56,214,208,${.25 + .75 * k})` : 'rgba(255,255,255,.12)';
+    ctx.beginPath(); ctx.arc(x, 1000, 48, 0, 7); ctx.fill();
+    text(String(i + 1), x, 1003, { w: 900, px: 46, color: k ? '#06302e' : 'rgba(255,255,255,.5)' });
+  }
+  // ikon simpan (bookmark) + ajakan simpan
+  const kb = P(lt, 2.4, 2.8);
+  if (kb) {
+    scaled(W / 2, 1230, .8 + .2 * back(kb), () => {
+      ctx.save(); ctx.globalAlpha *= clamp(kb * 2); ctx.fillStyle = GOLD;
+      ctx.beginPath(); ctx.moveTo(W / 2 - 46, 1150); ctx.lineTo(W / 2 + 46, 1150); ctx.lineTo(W / 2 + 46, 1290); ctx.lineTo(W / 2, 1255); ctx.lineTo(W / 2 - 46, 1290); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    });
+    chip('SAVE DULU', W / 2, 1370, { px: 56, alpha: clamp(kb * 2) });
+  }
+}
+
+// Isi tiap langkah: judul + gambar penjelas di area y 760–1450.
+const STEPS = {
+  1: { title: 'PILIH BIDANG', body(lt) {
+    [['care', 'perawat lansia'], ['factory', 'pabrik makanan'], ['helmet', 'konstruksi']].forEach(([ic, lab], i) => {
+      card(160, 760 + i * 160, 760, 128, P(lt, .5 + i * .35, .85 + i * .35), () => {
+        ctx.fillStyle = 'rgba(56,214,208,.25)'; ctx.beginPath(); ctx.arc(240, 824 + i * 160, 46, 0, 7); ctx.fill();
+        icon(ic, 240, 824 + i * 160, .9);
+        text(lab, 320, 826 + i * 160, { w: 800, px: 50, align: 'left' });
+      });
+    });
+    text('+ bidang lain', W / 2, 1265, { w: 700, px: 40, color: 'rgba(255,255,255,.75)', alpha: P(lt, 1.7, 2) });
+  } },
+  2: { title: 'UJIAN BAHASA', body(lt) {
+    [['JFT-Basic', 'min. 200 poin', 70], ['JLPT', 'N4', 630]].forEach(([a, b, x], i) => {
+      const k = P(lt, .5 + i * .45, .85 + i * .45); if (!k) return;
+      scaled(x + 190, 960, .8 + .2 * back(k), () => {
+        ctx.save(); ctx.globalAlpha *= clamp(k * 2);
+        ctx.fillStyle = CREAM; rrect(x, 800, 380, 320, 26); ctx.fill();
+        ctx.fillStyle = TEAL; rrect(x, 800, 380, 70, [26, 26, 0, 0]); ctx.fill();
+        text('SERTIFIKAT', x + 190, 837, { w: 800, px: 28, color: '#06302e' });
+        text(a, x + 190, 950, { w: 900, px: a.length > 5 ? 62 : 80, color: '#111' });
+        text(b, x + 190, 1040, { w: 800, px: b.length > 3 ? 36 : 72, color: '#555' });
+        ctx.restore();
+      });
+    });
+    popIn(lt, 1.1, (s) => scaled(W / 2, 960, s, () => chip('atau', W / 2, 960, { px: 44, bg: RED })));
+    text('pilih salah satu', W / 2, 1230, { w: 700, px: 42, alpha: P(lt, 1.5, 1.8) });
+  } },
+  3: { title: 'UJIAN KETERAMPILAN', body(lt) {
+    const k = eOut(P(lt, .3, .7));
+    ctx.save(); ctx.globalAlpha *= k; ctx.translate(W / 2, 1000 + (1 - k) * 60); ctx.rotate(-.03);
+    ctx.fillStyle = CREAM; rrect(-230, -230, 460, 470, 22); ctx.fill();
+    ctx.fillStyle = '#6b4f2a'; rrect(-80, -258, 160, 56, 14); ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      const y = -110 + i * 120, ki = P(lt, .8 + i * .35, 1.05 + i * .35);
+      ctx.fillStyle = '#c9bfa8'; rrect(-150, y - 10, 230, 20, 10); ctx.fill();
+      ctx.strokeStyle = '#999'; ctx.lineWidth = 4; rrect(-195, y - 22, 44, 44, 8); ctx.stroke();
+      if (ki) tick(-173, y, 30, ki);
+    }
+    ctx.restore();
+    text('sesuai bidang yang kamu pilih', W / 2, 1340, { w: 700, px: 44, alpha: P(lt, 1.6, 1.9), shadow: 12 });
+  } },
+  4: { title: 'CARI PERUSAHAAN', body(lt, d) {
+    ['lamar kerja', 'wawancara', 'kontrak kerja'].forEach((s, i) => {
+      const k = P(lt, .5 + i * .6, .85 + i * .6); if (!k) return;
+      const y = 820 + i * 190;
+      card(240, y, 600, 120, k, () => {
+        text(String(i + 1), 300, y + 62, { w: 900, px: 54, color: TEAL });
+        text(s, 360, y + 62, { w: 800, px: 52, align: 'left' });
+      });
+      if (i) { ctx.fillStyle = `rgba(56,214,208,${k})`; ctx.beginPath(); ctx.moveTo(W / 2 - 18, y - 52); ctx.lineTo(W / 2 + 18, y - 52); ctx.lineTo(W / 2, y - 26); ctx.closePath(); ctx.fill(); }
+    });
+    // ajakan simpan di tengah video (hanya 8% penonton sampai akhir)
+    popIn(lt, d - 1.6, (s) => scaled(W / 2, 1440, s, () => chip('simpan dulu biar nggak lupa', W / 2, 1440, { px: 36, bg: 'rgba(255,255,255,.92)', color: '#111' })));
+  } },
+  5: { title: 'COE', body(lt) {
+    const k = eOut(P(lt, .3, .7));
+    ctx.save(); ctx.globalAlpha *= k; ctx.translate(W / 2, 990 + (1 - k) * 60); ctx.rotate(.025);
+    ctx.fillStyle = CREAM; rrect(-280, -220, 560, 440, 16); ctx.fill();
+    ctx.strokeStyle = '#7a5b2b'; ctx.lineWidth = 4; rrect(-262, -202, 524, 404, 10); ctx.stroke();
+    text('Certificate of Eligibility', 0, -140, { w: 800, px: 36, color: '#333' });
+    ctx.fillStyle = '#c9bfa8'; for (let i = 0; i < 4; i++) { rrect(-200, -70 + i * 50, 400 - i * 60, 16, 8); ctx.fill(); }
+    ctx.restore();
+    const ks = P(lt, 1.3, 1.6);
+    if (ks) {
+      ctx.save(); ctx.globalAlpha = clamp(ks * 2); ctx.translate(W / 2 + 170, 1110); ctx.rotate(-.25); const s = 1.6 - .6 * eOut(ks); ctx.scale(s, s);
+      ctx.strokeStyle = RED; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(0, 0, 70, 0, 7); ctx.stroke();
+      text('IMIGRASI', 0, 2, { w: 900, px: 26, color: RED }); ctx.restore();
+    }
+    text('diurus perusahaan di Jepang', W / 2, 1320, { w: 700, px: 44, alpha: P(lt, 1.8, 2.1), shadow: 12 });
+  } },
+  6: { title: 'DAFTAR PMI', body(lt) {
+    const k = eOut(P(lt, .3, .7));
+    ctx.save(); ctx.globalAlpha *= k; ctx.translate(0, (1 - k) * 60);
+    ctx.fillStyle = '#1d2b2c'; rrect(240, 760, 600, 380, 20); ctx.fill();          // layar laptop
+    ctx.fillStyle = '#eef6f6'; rrect(262, 782, 556, 336, 10); ctx.fill();
+    ctx.fillStyle = '#0d5f5c'; rrect(262, 782, 556, 64, [10, 10, 0, 0]); ctx.fill();
+    text('SISKOP2MI', W / 2, 815, { w: 900, px: 38, color: '#fff' });
+    for (let i = 0; i < 3; i++) {
+      const ki = P(lt, .8 + i * .3, 1 + i * .3);
+      ctx.fillStyle = '#c3d3d3'; rrect(300, 880 + i * 70, 340, 40, 8); ctx.fill();
+      ctx.fillStyle = `rgba(13,95,92,${ki})`; rrect(300, 880 + i * 70, 340 * ki, 40, 8); ctx.fill();
+    }
+    ctx.fillStyle = TEAL; rrect(680, 1070, 120, 34, 8); ctx.fill();
+    ctx.fillStyle = '#2b3b3c'; rrect(200, 1140, 680, 30, [0, 0, 18, 18]); ctx.fill(); // alas laptop
+    ctx.restore();
+    const ko = cueTime(6, 'orientasi') - PARA[6];
+    popIn(lt, ko, (s) => scaled(W / 2, 1300, s, () => chip('+ orientasi pra pemberangkatan', W / 2, 1300, { px: 42, bg: '#fff', color: '#111' })));
+  } },
+  7: { title: 'VISA', body(lt) {
+    const k = eOut(P(lt, .2, .6));
+    ctx.save(); ctx.globalAlpha *= k; ctx.translate(W / 2, 1000 + (1 - k) * 60); ctx.rotate(-.04);
+    ctx.fillStyle = '#5a1420'; rrect(-200, -270, 400, 540, 22); ctx.fill();         // paspor
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, -40, 70, 0, 7); ctx.stroke();
+    text('PASPOR', 0, -190, { w: 900, px: 44, color: GOLD });
+    text('REPUBLIK INDONESIA', 0, 140, { w: 800, px: 24, color: GOLD });
+    ctx.restore();
+    const ks = P(lt, .9, 1.15);
+    if (ks) {
+      ctx.save(); ctx.globalAlpha = clamp(ks * 2); ctx.translate(W / 2 + 130, 1130); ctx.rotate(-.3); const s = 1.8 - .8 * eOut(ks); ctx.scale(s, s);
+      ctx.strokeStyle = TEAL; ctx.lineWidth = 8; rrect(-120, -55, 240, 110, 14); ctx.stroke();
+      text('VISA', 0, 3, { w: 900, px: 64, color: TEAL }); ctx.restore();
+    }
+    text('di Kedutaan Jepang', W / 2, 1360, { w: 700, px: 44, alpha: P(lt, 1.3, 1.6), shadow: 12 });
+  } },
+};
+const STEP_GLOW = { 1: '56,214,208', 2: '242,193,78', 3: '56,214,208', 4: '242,193,78', 5: '56,214,208', 6: '242,193,78', 7: '56,214,208' };
+function step(n, lt, d) {
+  const c = STEP_GLOW[n];
+  bgGlow(`rgba(${c},.36)`, 'rgba(5,30,32,.4)', W / 2, 900, 1150);
+  dust(lt, 10 + n, 'rgba(200,255,250,', 50);
+  progress(n, lt);
+  popIn(lt, 0, (s) => scaled(W / 2, 520, s, () => {
+    text('0' + n, W / 2, 450, { w: 900, px: 230, color: `rgba(${c},.95)`, shadow: 30 });
+    chip(STEPS[n].title, W / 2, 640, { px: 62, bg: '#fff', color: '#111' });
+  }), .28);
+  STEPS[n].body(lt, d);
+}
+
+// Penutup: logo + ajakan bimbingan TG mandiri lewat link di bio.
+function cta(lt, d) {
+  bgGlow('rgba(56,214,208,.25)', 'rgba(10,40,40,.3)', W / 2, 760, 1000);
+  dust(lt, 31, 'rgba(255,255,255,', 40);
+  const k = eOut(P(lt, 0, .4));
+  ctx.save(); ctx.globalAlpha = k; ctx.translate(W / 2, 560 + (1 - k) * 60); ctx.rotate(-.02);
+  ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 40; ctx.fillStyle = CREAM; rrect(-330, -150, 660, 300, 18); ctx.fill(); ctx.shadowBlur = 0;
+  const lg = document.getElementById('logo'); ctx.drawImage(lg, -260, -130, 520, 260); ctx.restore();
+  popIn(lt, .3, (s) => scaled(W / 2, 880, s, () => text('bimbingan dari langkah 1', W / 2, 880, { w: 800, px: 50 })));
+  popIn(lt, .5, (s) => scaled(W / 2, 970, s, () => text('TG MANDIRI', W / 2, 970, { w: 900, px: 104, color: TEAL, shadow: 24 })));
+  const kl = cueTime(8, 'Klik') - PARA[8];
+  popIn(lt, kl, (s) => scaled(W / 2, 1130, s, () => chip('KLIK LINK DI BIO', W / 2, 1130, { px: 80 })));
+}
+
+// ---------------------------------------------------------------- caption & render
+function caption(T) {
+  const c = window.__CAPS.find((x) => T >= x.a && T < x.b);
+  if (!c) return;
+  const k = P(T, c.a, c.a + .08);
+  ctx.save(); font(700, 50); const tw = ctx.measureText(c.text).width;
+  const y = 1590;
+  ctx.globalAlpha = .82 * k; ctx.fillStyle = 'rgba(18,18,18,.86)'; rrect(W / 2 - tw / 2 - 22, y - 42, tw + 44, 84, 12); ctx.fill();
+  ctx.restore();
+  ctx.save(); ctx.translate(W / 2, y); const s = .92 + .08 * eOut(k); ctx.scale(s, s);
+  text(c.text, 0, 3, { w: 700, px: 50, alpha: k }); ctx.restore();
+}
+
+window.render = (T) => {
+  const S = window.__SCENES;
+  if (OVERLAY) ctx.clearRect(0, 0, W, H);
+  let i = S.findIndex((s) => T >= s.a && T < s.b); if (i < 0) i = S.length - 1;
+  const s = S[i], lt = T - s.a, d = s.b - s.a;
+  ctx.save();
+  // kamera: dorong pelan + hentakan kecil di awal adegan
+  const punch = i === 0 ? 0 : (1 - eOut(P(lt, 0, .35))) * .08;
+  const z = 1 + .035 * P(lt, 0, d) + punch;
+  ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+  s.f(lt, d, T);
+  ctx.restore();
+  // vinyet + butiran film (mode footage: dikerjakan compose.py)
+  if (!OVERLAY) {
+    const v = ctx.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1250);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(GRAIN[Math.floor(T * 30) % 6], 0, 0, W, H);
+  }
+  caption(T);
+  // kilatan putih saat ganti paragraf (bukan di frame 0)
+  const fl = PARA.slice(1).map((p) => P(T, p, p + .18)).find((x) => x > 0 && x < 1);
+  if (fl !== undefined) { ctx.fillStyle = `rgba(255,255,255,${.85 * (1 - eOut(fl))})`; ctx.fillRect(0, 0, W, H); }
+};
+function init() {
+  window.__SCENES = sceneTimes(); window.__CAPS = captionChunks(); window.DUR = DUR;
+  // Efek suara (sfx.py): kilatan & pop per adegan.
+  const c = [[0, 'impact', 0], [0, 'boom']];
+  PARA.slice(1).forEach((p) => c.push([p - .02, 'cutfx'], [p, 'whoosh']));
+  window.__SCENES.forEach((s, i) => { if (i && !PARA.includes(s.a)) c.push([s.a, 'whoosh']); });
+  c.push([DUR - 3, 'boom']);
+  window.CUES = c;
+}
+init();
+window.render(0);
+</script>
+</body>
+</html>
