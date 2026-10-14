@@ -2,7 +2,7 @@
 
 Setiap kata kerja menampilkan bentuk biasa afirmatif nonlampau (bentuk kamus),
 lalu bentuk sopan ます, beserta bacaan masing-masing. Berlaku di kartu, daftar,
-dan detail kosakata. Speaker membacakan kedua bentuk berurutan. Pencarian
+dan detail kosakata. Speaker hanya membacakan bentuk biasa/kamus. Pencarian
 mengenali tulisan dan bacaan kedua bentuk.
 
 `backend/src/n5-verb-forms.js` memuat golongan dan bacaan yang diperiksa untuk
@@ -27,3 +27,8 @@ Verifikasi: seluruh 724 entri snapshot diperiksa; 143 kata kerja mendapat dua
 bentuk, 581 entri lainnya tidak. Tes mencakup sembilan akhiran godan, ichidan,
 する, 来る, kata kerja yang bentuk sumbernya ます, keamanan teks, urutan tampilan,
 pencarian kedua bentuk, audio, dan pergantian detail kata kerja ke kata benda.
+
+Audio mengirim teks Jepang bentuk kamus yang sudah ada di kosakata sumber.
+Gabungan bacaan seperti `よむ。よみます` bukan teks sumber dan ditolak oleh
+allowlist `/api/tts`; jangan mengirim gabungan tersebut atau melonggarkan
+allowlist. Tes memeriksa teks audio seluruh 143 entri terhadap kosakata sumber.

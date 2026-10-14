@@ -10036,9 +10036,9 @@ window.playQuizQuestionDialog = (qi, btn) => {
 window.playDeckAudio = (idx, btn) => {
   const it = (window.__deckData || [])[idx];
   if (!it) return;
-  // Pakai teks Jepang utama (kanji), bukan kana.
-  const forms = it.verbForms;
-  playTTS(forms ? `${forms.dictionaryReading}。${forms.masuReading}` : (it.japanese || it.reading || ''), btn);
+  // Kata kerja memakai bentuk kamus saja, dengan teks sumber yang dikenali
+  // endpoint ElevenLabs dan cache-nya; jangan gabungkan dua bacaan baru.
+  playTTS(it.verbForms?.dictionary || it.japanese || it.reading || '', btn);
 };
 window.playDeckExample = (idx, exIdx, btn) => {
   const it = (window.__deckData || [])[idx];
@@ -10148,7 +10148,7 @@ function renderDeckLesson(course, module, lesson, nav) {
           const level = String(usage.introducedLevel || '').trim();
           return `<span class="dc-kanji-tag" title="${escapeHtml(level ? kanjiUsageStatusLabel(usage) : 'Kanji dalam kata ini')}">${escapeHtml(usage.character)}${level ? ` · ${escapeHtml(level)}` : ''}</span>`;
         }).join('');
-        const audioBtn = `<button class="dc-audio" type="button" aria-label="Dengar ${forms ? 'bentuk biasa lalu bentuk masu' : `pengucapan ${jp}`}" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>`;
+        const audioBtn = `<button class="dc-audio" type="button" aria-label="Dengar ${forms ? `bentuk biasa ${jp}` : `pengucapan ${jp}`}" onclick="event.stopPropagation();playDeckAudio(${idx}, this)">${AUDIO_SVG}</button>`;
         if (deckView === 'list') {
           return `<div class="deck-list-item${forms ? ' has-verb-forms' : ''}" role="button" tabindex="0" aria-label="${label}" data-deck-index="${idx}" data-deck-search="${escapeHtml(search)}" onclick="openDeckModal(${idx})" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openDeckModal(${idx})}">
             ${forms ? verbPair : `<div class="dli-jp" lang="ja">${jp}</div>${it.reading ? `<div class="dli-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}`}
@@ -10221,7 +10221,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
     ${deckVideoBlock}
     ${heroBlock}
-    ${items.some(it => it.verbForms) ? '<p class="deck-verb-help">Kata kerja ditampilkan berpasangan: bentuk biasa (kamus), lalu bentuk ます (sopan). Keduanya memiliki arti dasar yang sama. Tekan speaker untuk mendengar keduanya berurutan.</p>' : ''}
+    ${items.some(it => it.verbForms) ? '<p class="deck-verb-help">Kata kerja ditampilkan berpasangan: bentuk biasa (kamus), lalu bentuk ます (sopan). Keduanya memiliki arti dasar yang sama. Tekan speaker untuk mendengar bentuk biasa.</p>' : ''}
     ${kanjiBridgeBlock}
     <div id="deck-card-wrap">
       ${toolbar}
@@ -12773,7 +12773,7 @@ window.openDeckModal = (idx) => {
   verbForms.innerHTML = it.verbForms ? `${globalThis.EzVocabularyVerbDisplay.render(it.verbForms, escapeHtml)}
     <div class="dm-verb-meaning">${escapeHtml(it.indonesian || '')}</div>
     <div class="dm-verb-group">Kata kerja · Golongan ${escapeHtml(it.verbForms.group)}</div>
-    <button class="dm-verb-audio btn-secondary" type="button" onclick="playDeckAudio(${idx}, this)">Dengar bentuk biasa → masu</button>` : '';
+    <button class="dm-verb-audio btn-secondary" type="button" onclick="playDeckAudio(${idx}, this)">Dengar bentuk biasa</button>` : '';
   const kanjiContext = document.getElementById('dm-kanji-context');
   const kanjiUsages = Array.isArray(it.kanjiUsages) ? it.kanjiUsages : [];
   if (kanjiContext) {

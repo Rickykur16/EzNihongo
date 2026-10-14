@@ -55,8 +55,24 @@ for (const view of ['card','list']) test(`${view} displays dictionary then masu,
   assert.match(output, /id="deck-type-noun">Kata benda<\/h2>/);
   assert.match(output, /data-deck-group-count>2 kata/);
   context.__deckData=items; context.playDeckAudio(0,{});
-  assert.equal(context.lastAudio, 'よむ。よみます');
+  assert.equal(context.lastAudio, '読む');
   context.playDeckAudio(2,{}); assert.equal(context.lastAudio,'本');
+  assert.match(output,/aria-label="Dengar bentuk biasa 読む"/);
+  assert.doesNotMatch(output,/mendengar keduanya berurutan/);
+});
+
+test('all 143 verb speakers use one existing curriculum dictionary headword accepted by the TTS allowlist', () => {
+  const corpus=JSON.parse(readFileSync(new URL('../content/n5-support/vocabulary-examples.json',import.meta.url))).items;
+  const known=new Set(corpus.flatMap(row=>[row.expectedCore.japanese,row.expectedCore.reading]).filter(Boolean));
+  const verbs=corpus.map(row=>({...row.expectedCore,verbForms:n5VerbForms(row.expectedCore,'n5')})).filter(row=>row.verbForms);
+  const {context}=setup();context.__deckData=verbs;
+  assert.equal(verbs.length,143);
+  verbs.forEach((row,index)=>{
+    context.playDeckAudio(index,{});
+    assert.equal(context.lastAudio,row.verbForms.dictionary);
+    assert.ok(known.has(context.lastAudio),`TTS must recognize ${context.lastAudio}`);
+    assert.doesNotMatch(context.lastAudio,/[。]|ます$/);
+  });
 });
 
 test('N4 keeps its flat vocabulary layout', () => {
@@ -85,6 +101,7 @@ test('modal switches from an early masu word to a noun without leaving stale for
   assert.equal(node('modal:.dm-jp').textContent,'寝る');
   assert.equal(node('modal:.deck-modal-head').hidden,true);
   assert.match(node('dm-verb-forms').innerHTML, /寝る[\s\S]*寝ます/);
+  assert.match(node('dm-verb-forms').innerHTML,/>Dengar bentuk biasa<\/button>/);
   context.openDeckModal(2);
   assert.equal(node('modal:.deck-modal-head').hidden,false);
   assert.equal(node('dm-verb-forms').hidden,true);
