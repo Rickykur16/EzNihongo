@@ -15,6 +15,7 @@ import { userCanAccessCourse, requireLessonCourseAccess } from '../entitlements.
 import { loadPilotConfig } from '../bunpou-flow-config.js';
 import { pilotPublicCompanion } from '../bunpou-flow-content.js';
 import { n4DialogueSelfChecks } from '../n4-dialogue-support.js';
+import { n5VerbForms } from '../n5-verb-forms.js';
 
 const router = Router();
 
@@ -192,6 +193,7 @@ router.get('/courses/:slug', requireAuth, asyncHandler(async (req, res) => {
           romaji: r.romaji,
           indonesian: r.indonesian,
           category: r.category,
+          verbForms: n5VerbForms(r, course.rows[0].slug),
           note: String(r.note || '').replace(/\[subcat:[^\]]*\]/g, '').trim(),
           accentColor: r.accent_color,
           examples: examplesByVocab[r.id] || [],
@@ -462,6 +464,7 @@ router.get('/lessons/:id', requireAuth, asyncHandler(async (req, res) => {
       romaji: r.romaji,
       indonesian: r.indonesian,
       category: r.category,
+      verbForms: n5VerbForms(r, row.course_slug),
       note: String(r.note || '').replace(/\[subcat:[^\]]*\]/g, '').trim(),
       accentColor: r.accent_color,
       examples: examplesByVocab[r.id] || [],
