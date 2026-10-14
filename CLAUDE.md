@@ -71,6 +71,16 @@
 
 ## Konvensi penting
 
+- **Urutan N5 Bab 13/14 ditukar** (pemilik, 14 Okt 2026): Bab 13 sekarang
+  Bentuk Biasa Kata Kerja & Kewajiban; Bab 14 Penggunaan Bentuk Te. Migrasi 213
+  memindahkan posisi modul utuh dan nomor tampilan, bukan UUID/slug atau
+  keanggotaan lesson. `n5-b14` adalah identitas stabil materi yang kini tampil
+  sebagai Bab 13; `n5-b13` kini Bab 14. Jangan menukar array ringkasan
+  `EzN5Copy` berdasarkan nomor tampilan: ringkasan mengikuti identitas materi.
+  Label bab kanji, contoh kanji dan proyeksi referensi kosakata ikut posisi baru.
+  Manifes/migrasi lama tetap bernomor sumber historis. Rincian:
+  `docs/n5-chapter-order.md`; tes: `backend/src/n5-chapter-swap.test.js`.
+
 - **Video TikTok/Reels: WAJIB baca `marketing/catatan-video-tiktok.md` dulu** (hasil video
   pertama yang FYP 10 Okt 2026, aturan hook/durasi/naskah/ElevenLabs v4, checklist, tabel
   hasil per video). Template & cara render: `marketing/biaya-ssw-src/` (lihat README-nya).
