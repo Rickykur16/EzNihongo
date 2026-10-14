@@ -4,7 +4,9 @@ Kartu dan daftar dipisahkan menjadi bagian per jenis kata, dengan judul Indonesi
 label Jepang, dan jumlah kata. Bagian yang tidak memiliki kata tidak ditampilkan.
 Kata kerja berada lebih dulu, diikuti kata sifat い/な, kata benda, kata ganti/tunjuk,
 kata tanya, kata keterangan, bilangan, partikel, kata sambung, imbuhan, dan ungkapan.
-Kartu pendek tidak mengikuti tinggi kartu kata kerja dari jenis lain.
+Kartu kata kerja menampilkan bentuk biasa saja, dengan petunjuk untuk membuka
+bentuk ます di detail. Semua kartu memakai tata letak ringkas yang sama; kedua
+bentuk tetap terlihat dalam tampilan daftar dan detail.
 
 `backend/src/n5-vocabulary-type.js` menambahkan `wordType` pada kedua endpoint
 konten deck N5. Jenis kata mengambil kategori sumber dengan koreksi eksplisit

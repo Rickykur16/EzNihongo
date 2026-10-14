@@ -1,8 +1,11 @@
 # Pasangan bentuk kata kerja di pelajaran Kosakata N5
 
-Setiap kata kerja menampilkan bentuk biasa afirmatif nonlampau (bentuk kamus),
-lalu bentuk sopan ます, beserta bacaan masing-masing. Berlaku di kartu, daftar,
-dan detail kosakata. Speaker hanya membacakan bentuk biasa/kamus. Pencarian
+Kartu kata kerja hanya menampilkan bentuk biasa afirmatif nonlampau (bentuk
+kamus), bacaan, dan arti. Klik kartu untuk membuka detail yang menampilkan
+bentuk biasa lalu bentuk sopan ます, beserta bacaan masing-masing. Tinggi kartu
+memakai tata letak yang sama dengan kartu kata benda; membuka detail tidak
+mengubah tinggi grid. Tampilan daftar tetap memperlihatkan kedua bentuk.
+Speaker hanya membacakan bentuk biasa/kamus. Pencarian
 mengenali tulisan dan bacaan kedua bentuk.
 
 `backend/src/n5-verb-forms.js` memuat golongan dan bacaan yang diperiksa untuk

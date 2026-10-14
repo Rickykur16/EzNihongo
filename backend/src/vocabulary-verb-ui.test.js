@@ -40,13 +40,24 @@ function setup(view = 'card') {
   return {context,node};
 }
 
-for (const view of ['card','list']) test(`${view} displays dictionary then masu, preserves nouns, and searches both readings`, () => {
+for (const view of ['card','list']) test(`${view} preserves nouns and both search readings while cards defer masu to detail`, () => {
   const {context,node}=setup(view);
   context.renderDeckLesson({name:'N5'}, {title:'Kegiatan'}, {title:'Kosakata',deck:items}, {});
   const output=node('main-content').innerHTML;
-  assert.equal((output.match(/class="deck-verb-forms"/g)||[]).length, 2);
-  assert.ok(output.indexOf('>読む</span>') < output.indexOf('>読みます</span>'));
-  assert.ok(output.indexOf('>寝る</span>') < output.indexOf('>寝ます</span>'));
+  if (view === 'card') {
+    assert.equal((output.match(/class="deck-verb-forms"/g)||[]).length,0);
+    assert.match(output, /class="dc-jp" lang="ja">読む<\/div>/);
+    assert.match(output, /class="dc-jp" lang="ja">寝る<\/div>/);
+    assert.match(output, /class="dc-kana" lang="ja">ねる<\/div>/);
+    assert.doesNotMatch(output, />読みます<|>寝ます</);
+    assert.match(output,/Klik untuk bentuk ます/);
+    assert.match(output,/aria-haspopup="dialog"/);
+    assert.doesNotMatch(output,/aria-label="読む →/,'Collapsed cards must not announce the hidden answer');
+  } else {
+    assert.equal((output.match(/class="deck-verb-forms"/g)||[]).length,2);
+    assert.ok(output.indexOf('>読む</span>') < output.indexOf('>読みます</span>'));
+    assert.ok(output.indexOf('>寝る</span>') < output.indexOf('>寝ます</span>'));
+  }
   assert.match(output, /data-deck-search="[^"]*よみます/);
   assert.match(output, /lang="ja">本<\/div>/);
   assert.match(output, /event.target===this/,'Nested audio controls must work with Enter/Space');
@@ -59,6 +70,16 @@ for (const view of ['card','list']) test(`${view} displays dictionary then masu,
   context.playDeckAudio(2,{}); assert.equal(context.lastAudio,'本');
   assert.match(output,/aria-label="Dengar bentuk biasa 読む"/);
   assert.doesNotMatch(output,/mendengar keduanya berurutan/);
+});
+
+test('opening a compact card reveals the masu pair in the dialog without rewriting the grid', () => {
+  const {context,node}=setup();
+  context.renderDeckLesson({name:'N5'},{title:'Kegiatan'},{title:'Kosakata',deck:items},{});
+  const before=node('main-content').innerHTML;
+  context.openDeckModal(0);
+  assert.match(node('dm-verb-forms').innerHTML, />読む<[^]*>読みます</);
+  assert.equal(node('dm-verb-forms').hidden,false);
+  assert.equal(node('main-content').innerHTML,before);
 });
 
 test('all 143 verb speakers use one existing curriculum dictionary headword accepted by the TTS allowlist', () => {

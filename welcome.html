@@ -4880,8 +4880,8 @@
   }
 </style>
 <link rel="stylesheet" href="styles/n5-learning-copy.css?v=20261013-1"/>
-<link rel="stylesheet" href="styles/vocabulary-verb-forms.css?v=20261014-1"/>
-<link rel="stylesheet" href="styles/vocabulary-groups.css?v=20261014-1"/>
+<link rel="stylesheet" href="styles/vocabulary-verb-forms.css?v=20261014-2"/>
+<link rel="stylesheet" href="styles/vocabulary-groups.css?v=20261014-2"/>
 <link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
 <link rel="stylesheet" href="final-exam.css?v=20261003-4"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
@@ -10139,11 +10139,11 @@ function renderDeckLesson(course, module, lesson, nav) {
 
   const renderCard = (it, idx) => {
         const forms = it.verbForms;
-        const verbPair = globalThis.EzVocabularyVerbDisplay.render(forms, escapeHtml);
+        const verbPair = deckView === 'list' ? globalThis.EzVocabularyVerbDisplay.render(forms, escapeHtml) : '';
         const search = [it.japanese, it.reading, it.romaji, it.indonesian, forms?.dictionary, forms?.dictionaryReading, forms?.masu, forms?.masuReading].filter(Boolean).join(' ').toLowerCase();
         const jp = escapeHtml(forms?.dictionary || it.japanese || '');
         const arti = escapeHtml(it.indonesian || '');
-        const label = `${jp}${forms ? ` → ${escapeHtml(forms.masu)}` : ''}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat contoh kalimat.`;
+        const label = `${jp}${forms && deckView === 'list' ? ` → ${escapeHtml(forms.masu)}` : ''}${arti ? ' — ' + arti : ''}. Tekan Enter untuk lihat ${forms ? 'bentuk ます dan ' : ''}contoh kalimat.`;
         const kanjiTags = (it.kanjiUsages || []).map((usage) => {
           const level = String(usage.introducedLevel || '').trim();
           return `<span class="dc-kanji-tag" title="${escapeHtml(level ? kanjiUsageStatusLabel(usage) : 'Kanji dalam kata ini')}">${escapeHtml(usage.character)}${level ? ` · ${escapeHtml(level)}` : ''}</span>`;
@@ -10157,12 +10157,13 @@ function renderDeckLesson(course, module, lesson, nav) {
             ${audioBtn}
           </div>`;
         }
-        return `<div class="deck-card${forms ? ' has-verb-forms' : ''}" role="button" tabindex="0" aria-label="${label}" data-deck-index="${idx}" data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${idx})" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openDeckModal(${idx})}">
+        return `<div class="deck-card${forms ? ' has-verb-forms' : ''}" role="button" aria-haspopup="dialog" tabindex="0" aria-label="${label}" data-deck-index="${idx}" data-deck-search="${escapeHtml(search)}" style="--deck-accent:${deckAccent(it)};" onclick="openDeckModal(${idx})" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();openDeckModal(${idx})}">
           ${audioBtn}
-          ${forms ? verbPair : `<div class="dc-jp" lang="ja">${jp}</div>${it.reading ? `<div class="dc-kana" lang="ja">${escapeHtml(it.reading)}</div>` : ''}`}
+          <div class="dc-jp" lang="ja">${jp}</div>
+          ${forms?.dictionaryReading || it.reading ? `<div class="dc-kana" lang="ja">${escapeHtml(forms?.dictionaryReading || it.reading)}</div>` : ''}
           <div class="dc-meaning">${arti}</div>
           ${kanjiTags ? `<div class="dc-kanji-tags">${kanjiTags}</div>` : ''}
-          <span class="dc-len" aria-hidden="true">Klik untuk contoh</span>
+          <span class="dc-len" aria-hidden="true">${forms ? 'Klik untuk bentuk ます' : 'Klik untuk contoh'}</span>
         </div>`;
   };
   const cardsHtml = items.length === 0
@@ -10221,7 +10222,7 @@ function renderDeckLesson(course, module, lesson, nav) {
     <p class="lesson-subtitle">${module.title}${lesson.duration ? ' — ' + lesson.duration : ''}</p>
     ${deckVideoBlock}
     ${heroBlock}
-    ${items.some(it => it.verbForms) ? '<p class="deck-verb-help">Kata kerja ditampilkan berpasangan: bentuk biasa (kamus), lalu bentuk ます (sopan). Keduanya memiliki arti dasar yang sama. Tekan speaker untuk mendengar bentuk biasa.</p>' : ''}
+    ${items.some(it => it.verbForms) ? `<p class="deck-verb-help">${deckView === 'card' ? 'Kartu kata kerja menampilkan bentuk biasa (kamus). Klik kartu untuk melihat bentuk ます (sopan) dan contoh kalimat.' : 'Kata kerja ditampilkan berpasangan: bentuk biasa (kamus), lalu bentuk ます (sopan).'} Tekan speaker untuk mendengar bentuk biasa.</p>` : ''}
     ${kanjiBridgeBlock}
     <div id="deck-card-wrap">
       ${toolbar}
