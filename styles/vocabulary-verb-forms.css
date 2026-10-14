@@ -1,0 +1,27 @@
+.deck-verb-forms { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; }
+.dv-form { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.dv-label { font-size: 11px; line-height: 1.4; font-weight: 600; color: var(--du-ink-3); }
+.dv-word { font-family: 'Noto Sans JP', sans-serif; font-size: 22px; line-height: 1.4; font-weight: 700; color: var(--du-ink); overflow-wrap: anywhere; }
+.dv-reading { font-family: 'Noto Sans JP', sans-serif; font-size: 13px; line-height: 1.5; color: var(--brand-red); overflow-wrap: anywhere; }
+.dv-arrow { color: var(--du-ink-3); }
+.deck-card.has-verb-forms { padding-top: 44px; }
+.deck-card .deck-verb-forms { grid-template-columns: minmax(0, 1fr); gap: 7px; width: 100%; }
+.deck-card .dv-arrow { transform: rotate(90deg); line-height: 1; }
+.deck-list-item.has-verb-forms { flex-wrap: wrap; }
+.deck-list-item .deck-verb-forms { flex: 1 1 340px; }
+.deck-list-item.has-verb-forms .dli-meaning { flex: 1 1 120px; white-space: normal; }
+.dm-verb-forms { padding: 10px 0 18px; margin-bottom: 18px; border-bottom: 1px solid var(--du-border); }
+.dm-verb-forms .dv-word { font-size: 30px; }
+.dm-verb-meaning { margin-top: 14px; font-size: 15px; font-weight: 600; color: var(--du-ink); }
+.dm-verb-group { margin-top: 5px; font-size: 12px; color: var(--du-ink-3); }
+.dm-verb-audio { margin-top: 12px; }
+.deck-modal-head[hidden], .dm-verb-forms[hidden] { display: none; }
+.deck-modal-head { flex-wrap: wrap; padding-top: 12px; }
+.deck-modal-head .dm-jp { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
+.deck-modal-head .dm-info { min-width: 0; overflow-wrap: anywhere; }
+.deck-verb-help { margin: 12px 0; font-size: 13px; line-height: 1.6; color: var(--du-ink-2); }
+@media (max-width: 600px) {
+  .deck-list-item .deck-verb-forms { flex-basis: 100%; gap: 8px; }
+  .deck-list-item .dv-word, .dm-verb-forms .dv-word { font-size: 21px; }
+  .dm-verb-forms .deck-verb-forms { gap: 8px; }
+}
