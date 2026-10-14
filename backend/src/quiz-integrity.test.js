@@ -105,9 +105,9 @@ test('quiz integrity with real HTTP and PostgreSQL', {
     assert.equal(s.results.length, 0);
     assert.equal(s.progress.length, 0);
   });
-  await t.test('concurrent submit and lost-response retry return one immutable grade and one XP award', async () => {
+  await t.test('concurrent submit and lost-response retry save one completion without XP', async () => {
     const f = await fixture();
-    const before = (await control.query('SELECT xp FROM user_stats WHERE user_id=$1',[user])).rows[0]?.xp || 0;
+    const before = (await control.query('SELECT xp, total_lessons_completed, total_minutes_learned FROM user_stats WHERE user_id=$1',[user])).rows[0] || {xp:0,total_lessons_completed:0,total_minutes_learned:0};
     const results = await Promise.all([submit(f), submit(f)]);
     assert.deepEqual(results[0], results[1]);
     assert.equal(results[0].status, 200);
@@ -120,8 +120,10 @@ test('quiz integrity with real HTTP and PostgreSQL', {
     assert.equal(s.attempt.submitted_answers.length, 2);
     assert.equal(s.progress[0].completed, true);
     assert.equal((await call(route(f,'complete'))).status, 200);
-    const after = (await control.query('SELECT xp FROM user_stats WHERE user_id=$1',[user])).rows[0].xp;
-    assert.equal(after - before, 15);
+    const after = (await control.query('SELECT xp, total_lessons_completed, total_minutes_learned FROM user_stats WHERE user_id=$1',[user])).rows[0];
+    assert.equal(after.xp, before.xp);
+    assert.equal(after.total_lessons_completed - before.total_lessons_completed, 1);
+    assert.equal(after.total_minutes_learned - before.total_minutes_learned, 5);
   });
   await t.test('failed quiz and client completion flags cannot unlock a quiz; ordinary lessons still complete', async () => {
     const f = await fixture();

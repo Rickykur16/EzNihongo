@@ -758,8 +758,7 @@ body > footer :is(a, button, input, select, textarea, summary, [role="button"], 
   .course-picker-list,
   .lessons
 ),
-.sidebar-backdrop,
-body > .xp-toast {
+.sidebar-backdrop {
   transition-duration: var(--duration-base);
   transition-delay: 0ms;
   transition-timing-function: var(--ease-standard);
@@ -852,7 +851,6 @@ body > .completion-overlay .completion-modal,
   .sidebar-backdrop,
   body > .completion-overlay,
   body > .completion-overlay *,
-  body > .xp-toast,
   .confetti-piece,
   #ai-senpai *,
   #ai-senpai *::before,

@@ -541,7 +541,7 @@ router.put('/progress/lesson/:lessonId/note', requireLessonCourseAccess('lessonI
 router.get('/stats/me', asyncHandler(async (req, res) => {
   const [statsRes, todayRes] = await Promise.all([
     query(
-      `SELECT xp, level, streak_days, last_active_date,
+      `SELECT streak_days, last_active_date,
               total_lessons_completed, total_minutes_learned
        FROM user_stats WHERE user_id = $1 LIMIT 1`,
       [req.user.id]
@@ -559,7 +559,7 @@ router.get('/stats/me', asyncHandler(async (req, res) => {
   ]);
 
   const base = statsRes.rows[0] || {
-    xp: 0, level: 1, streak_days: 0, last_active_date: null,
+    streak_days: 0, last_active_date: null,
     total_lessons_completed: 0, total_minutes_learned: 0,
   };
 

@@ -1469,14 +1469,6 @@
   }
   .completion-modal h2 { font-size: 24px; font-weight: 800; margin: 0 0 8px; }
   .completion-modal p { color: #485f84; margin: 0 0 20px; line-height: 1.5; }
-  .completion-xp {
-    display: inline-block; padding: 10px 22px;
-    /* Palet reward gold (bukan merah-aksi) — momen rayakan terasa beda dari CTA */
-    background: linear-gradient(135deg, #F2C94C 0%, #E0A100 100%);
-    color: #4a3408; border-radius: 999px;
-    font-weight: 800; font-size: 15px; margin-bottom: 20px;
-    box-shadow: 0 6px 18px rgba(201,162,39,0.35);
-  }
   .completion-actions { display: flex; gap: 10px; flex-wrap: wrap; }
   .completion-actions .btn-primary, .completion-actions .btn-secondary { flex: 1; min-width: 120px; }
   @media (max-width: 480px) {
@@ -1496,12 +1488,8 @@
     }
   }
 
-  /* ── XP Toast mobile ── */
   @media (max-width: 600px) {
-    .xp-toast { bottom: 16px; right: 16px; left: 16px; padding: 10px 14px; }
-    .xp-toast.show { transform: translateY(0); }
-    .xp-toast { transform: translateY(80px); }
-  }
+    }
 
   /* ── Confetti ── */
   .confetti-piece {
@@ -1515,27 +1503,6 @@
     0% { transform: translateY(0) rotate(0deg); opacity: 1; }
     100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
   }
-
-  /* ── XP Toast ── */
-  .xp-toast {
-    position: fixed; bottom: 24px; right: 24px;
-    background: #191c1d; color: #fff;
-    padding: 12px 18px; border-radius: 12px;
-    display: flex; align-items: center; gap: 10px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    z-index: 999;
-    transform: translateX(400px); opacity: 0;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
-  }
-  .xp-toast.show { transform: translateX(0); opacity: 1; }
-  .xp-toast .bolt {
-    width: 30px; height: 30px;
-    background: linear-gradient(135deg, var(--brand-red), #e11d48);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px;
-  }
-  .xp-toast .text { font-weight: 700; font-size: 14px; }
 
   /* ── Discord Card ── */
   .discord-card {
@@ -2173,16 +2140,6 @@
   .completion-modal h2 {
     font-family: var(--font-body);
     letter-spacing: -0.02em;
-  }
-
-  /* ── XP TOAST ───────────────────────────────────────────────────── */
-  .xp-toast {
-    border-radius: 14px;
-    background: linear-gradient(135deg, #191c1d 0%, #2e3138 100%);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.25);
-  }
-  .xp-toast .bolt {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   }
 
   /* ── BANNER (payment success) ───────────────────────────────────── */
@@ -5647,61 +5604,6 @@ async function importLegacyMasteryToServer() {
 }
 
 // ═══════════════════════════════════════════════
-// GAMIFICATION — XP, Streak, Daily Goal
-// ═══════════════════════════════════════════════
-const DAILY_GOAL_XP = 30;
-
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function yesterdayStr() {
-  const d = new Date(Date.now() - 86400000);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function getStats() {
-  try {
-    const s = JSON.parse(localStorage.getItem('ez_stats') || '{}');
-    return { xp: s.xp || 0, streak: s.streak || 0, lastActive: s.lastActive || null, dailyXP: s.dailyXP || 0, dailyDate: s.dailyDate || null };
-  } catch { return { xp: 0, streak: 0, lastActive: null, dailyXP: 0, dailyDate: null }; }
-}
-function saveStats(s) { localStorage.setItem('ez_stats', JSON.stringify(s)); }
-
-function tickActivityAndStreak() {
-  const s = getStats();
-  const today = todayStr();
-  if (s.lastActive === today) return s;
-  if (s.lastActive === yesterdayStr()) s.streak = (s.streak || 0) + 1;
-  else s.streak = 1;
-  s.lastActive = today;
-  if (s.dailyDate !== today) { s.dailyXP = 0; s.dailyDate = today; }
-  saveStats(s);
-  return s;
-}
-
-function addXP(amount, reason) {
-  const s = tickActivityAndStreak();
-  s.xp = (s.xp || 0) + amount;
-  s.dailyXP = (s.dailyXP || 0) + amount;
-  saveStats(s);
-  showXPToast(amount, reason);
-}
-
-// Toast XP disembunyikan bareng stats bar.
-function showXPToast(_amount, _reason) {}
-
-// Stats bar (XP/streak/target trio) dulu dihilangkan karena cluttered.
-// Sekarang diganti habit bar minimalis: streak chip + daily goal progress.
-// Server-authoritative — fetch /api/stats/me untuk streak_days + today's
-// progress, bukan dari localStorage. addXP/getStats/saveStats tetap hidup
-// supaya pemanggil tidak error, tapi UI tidak baca darinya lagi.
-
-// (Habit bar removed — XP/streak still tracked server-side via /api/stats/me
-// and updated via /api/progress/lesson/:id/complete; the on-dashboard widget
-// was dropped per request.)
-
-// ═══════════════════════════════════════════════
 // CONFETTI + COMPLETION MODAL
 // ═══════════════════════════════════════════════
 function fireConfetti() {
@@ -5719,7 +5621,7 @@ function fireConfetti() {
   }
 }
 
-function showCompletion({ title, message, xp, continueLabel, onContinue, onSecondary, secondaryLabel }) {
+function showCompletion({ title, message, continueLabel, onContinue, onSecondary, secondaryLabel }) {
   const overlay = document.createElement('div');
   overlay.className = 'completion-overlay show';
   overlay.innerHTML = `
@@ -5727,7 +5629,6 @@ function showCompletion({ title, message, xp, continueLabel, onContinue, onSecon
       <div class="check-circle">✓</div>
       <h2>${title}</h2>
       <p>${message}</p>
-      ${xp ? `<div class="completion-xp">+${xp} XP</div>` : ''}
       <div class="completion-actions">
         ${secondaryLabel ? `<button class="btn-secondary" id="completion-sec">${secondaryLabel}</button>` : ''}
         <button class="btn-primary" id="completion-cont">${continueLabel || 'Lanjut'}</button>
@@ -6868,7 +6769,6 @@ window.pickQuizAnswer = async (questionIndex, optionIndex) => {
   const qHintEl = document.getElementById(`quiz-qhint-${qi}`);
   if (qHintEl) qHintEl.remove();
 
-  if (isCorrect) addXP(5, 'jawaban benar');
   updateQuizPaperProgress();
 };
 
@@ -6970,7 +6870,7 @@ async function finishQuiz() {
   const passing = data.passingScorePct;
   const scoreReport = data.scoreReport;
   const pct = Math.round((score / total) * 100);
-  const bonusXP = passed ? 20 : 10;
+
   state.correctByIndex = Object.fromEntries(questions.map((q, i) => [i, data.correctByQuestion[q.questionId]]));
 
   // Local caches are updated only after the server confirms its transaction.
@@ -6992,9 +6892,8 @@ async function finishQuiz() {
     }
     allProgress[slug] = cp;
     setProgress(allProgress);
-    // Canonical completion and XP were saved with the attempt on the server.
+    // Canonical completion was saved with the attempt on the server.
   }
-  addXP(bonusXP, passed ? 'lulus kuis' : 'mencoba kuis');
   const placementKind = kanaPlacementMeta({ id: key.split(':')[2] })?.kind;
   if (passed && !placementKind) fireConfetti();
 
@@ -7234,8 +7133,7 @@ window.flipFlashcard = () => {
 };
 
 window.rateFlashcard = (rating) => {
-  const xp = rating === 'easy' ? 2 : rating === 'medium' ? 3 : 5;
-  addXP(xp, 'review kartu');
+
   flashState.idx++;
   flashState.flipped = false;
   renderFlashcard();
@@ -11306,7 +11204,7 @@ window.gtPopupDismiss = () => {
   try { if (window.AISenpai && AISenpai._started) AISenpai.refresh(); } catch {}
 };
 
-// Selesaikan tugas: tandai task lesson selesai + XP, tutup, lanjut.
+// Selesaikan tugas: tandai task lesson selesai, tutup, lanjut.
 window.gtPopupComplete = async () => {
   const completeButton = document.querySelector('.gt-popup #gt-complete-btn');
   if (completeButton?.getAttribute('aria-busy') === 'true') return;
@@ -11324,7 +11222,6 @@ window.gtPopupComplete = async () => {
     cp[ctx.lessonKey] = true;
     allProgress[currentState.course] = cp;
     setProgress(allProgress);
-    if (!wasDone) addXP(10, 'tugas grammar selesai');
     const course = COURSE_CONTENT[currentState.course];
     const module = course?.modules?.find((item) => item.id === ctx.moduleId);
     const taskLesson = module?.lessons?.find((item) => `${module.id}:${item.id}` === ctx.lessonKey);
@@ -11355,20 +11252,16 @@ function finishLearningMilestone(course, module, newlyCompleted, onContinue) {
     showCompletion({
       title: '🎌 Selamat! Kelas Selesai',
       message: `Kamu telah menyelesaikan semua materi ${course.name}. 素晴らしい！`,
-      xp: 50,
       continueLabel: 'Tutup',
       onContinue,
     });
-    addXP(50, 'kelas selesai');
   } else if (moduleComplete) {
     showCompletion({
       title: 'Bab Selesai!',
       message: `Kamu sudah tamatkan "${module.title}". Lanjut ke materi berikutnya?`,
-      xp: 15,
       continueLabel: 'Lanjut →',
       onContinue,
     });
-    addXP(15, 'bab selesai');
   } else {
     onContinue();
   }
@@ -14770,7 +14663,6 @@ window.markCompleteAndNext = async (triggerButton) => {
   allProgress[courseSlug] = courseProgress;
   setProgress(allProgress);
 
-  if (!wasAlreadyDone) addXP(10, 'lesson selesai');
   // Always retry the idempotent canonical write, even if the local cache was
   // already TRUE. This repairs older sessions whose fire-and-forget request
   // was interrupted while moving to Dashboard.

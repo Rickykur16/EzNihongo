@@ -34,13 +34,11 @@ export async function completeLessonWithStats(client, { userId, lessonId }) {
 
   if (firstComplete) {
     const minutes = Number(lesson.rows[0].duration_minutes) || 0;
-    const xpGained = 10 + minutes;
     await client.query(
-      `INSERT INTO user_stats (user_id, xp, total_lessons_completed, total_minutes_learned, last_active_date)
-       VALUES ($1, $2, 1, $3, CURRENT_DATE)
+      `INSERT INTO user_stats (user_id, total_lessons_completed, total_minutes_learned, last_active_date)
+       VALUES ($1, 1, $2, CURRENT_DATE)
        ON CONFLICT (user_id) DO UPDATE
-       SET xp = user_stats.xp + EXCLUDED.xp,
-           total_lessons_completed = user_stats.total_lessons_completed + 1,
+       SET total_lessons_completed = user_stats.total_lessons_completed + 1,
            total_minutes_learned = user_stats.total_minutes_learned + EXCLUDED.total_minutes_learned,
            streak_days = CASE
              WHEN user_stats.last_active_date = CURRENT_DATE THEN user_stats.streak_days
@@ -49,7 +47,7 @@ export async function completeLessonWithStats(client, { userId, lessonId }) {
            END,
            last_active_date = CURRENT_DATE,
            updated_at = NOW()`,
-      [userId, xpGained, minutes]
+      [userId, minutes]
     );
   }
 
@@ -59,7 +57,7 @@ export async function completeLessonWithStats(client, { userId, lessonId }) {
 export async function reconcileLegacyProgress(client, userId) {
   // Legacy blobs only say an item is complete; they do not carry a trustworthy
   // completion timestamp.  Keep completed_at NULL for records reconstructed
-  // here and do not award retrospective XP or stats.
+  // here and do not award retrospective activity statistics.
   // Quiz flags are excluded: only a graded submission can complete a quiz.
   const result = await client.query(
     `WITH legacy_lessons AS (

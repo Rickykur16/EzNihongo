@@ -101,7 +101,7 @@ test('retry keeps the token/answers and only applies the server-confirmed result
   await ctx.finishQuiz();
   assert.equal(effects.calls.length,2);
   assert.equal(effects.calls[0][1].body,effects.calls[1][1].body);
-  assert.equal(effects.xp,1);
+  assert.equal(effects.xp,0);
   assert.equal(effects.progress,1);
   assert.equal(effects.confetti,1);
   assert.equal(state.submitted,true);
