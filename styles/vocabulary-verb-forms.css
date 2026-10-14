@@ -25,3 +25,8 @@
   .deck-list-item .dv-word, .dm-verb-forms .dv-word { font-size: 21px; }
   .dm-verb-forms .deck-verb-forms { gap: 8px; }
 }
+@media (max-width: 380px) {
+  .deck-modal-nav { flex-wrap: wrap; gap: 8px; }
+  .deck-modal-nav .dm-counter { flex: 0 0 100%; order: -1; text-align: center; }
+  .deck-modal-nav button { flex: 1; min-width: 0; justify-content: center; padding: 8px 6px; }
+}
