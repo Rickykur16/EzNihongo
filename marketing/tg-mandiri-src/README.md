@@ -1,4 +1,4 @@
-# Video "Tutorial TG mandiri: 10 langkah tanpa LPK" (9:16, ±52 detik)
+# Video "Tutorial TG mandiri: 10 langkah tanpa LPK" (9:16, ±70 detik)
 
 Gaya = video "Biaya TG mandiri" (`../biaya-ssw-src`, video pertama yang FYP), atas permintaan
 pemilik (14 Okt 2026, "Pake gaya yang ini"): kanvas hitam, judul kotak merah atas ("TUTORIAL TG
@@ -8,7 +8,7 @@ Tanpa foto (video LPK kena label AI karena foto).
 
 Bedanya dengan video pertama, sesuai `../catatan-video-tiktok.md`:
 - bar atas/bawah dan klaim "10 LANGKAH" sudah tampil penuh di frame 0 (tanpa animasi masuk);
-- durasi ±52 detik (bukan 65);
+- durasi ±70 detik (bukan 65);
 - elemen ditaruh pada kata yang diucapkan lewat `at(paragraf, 'kata')`.
 
 Naskah & dasar isi: `naskah.md`.

@@ -1,4 +1,4 @@
-# Naskah: "Tutorial TG mandiri: 10 langkah tanpa LPK" (±52 detik)
+# Naskah: "Tutorial TG mandiri: 10 langkah tanpa LPK" (±70 detik)
 
 Permintaan pemilik (14 Okt 2026): "Buatkan konten tutorial TG mandiri", hook dari pemilik "Save
 konten ini kalau kamu lagi cari tau cara step2 TG mandiri". Gaya sama dengan video LPK
@@ -9,13 +9,13 @@ konten ini kalau kamu lagi cari tau cara step2 TG mandiri". Gaya sama dengan vid
 ```
 Save video ini kalau kamu lagi cari tahu cara TG mandiri. Ada sepuluh langkah, tanpa LPK.
 
-Satu, pilih bidang kerjanya dulu. Misalnya perawat lansia, pabrik makanan, atau konstruksi.
+Satu, pilih bidang kerjanya dulu. Misalnya perawat lansia, pabrik makanan, atau konstruksi. Cek dulu bidang yang masih buka, karena restoran sedang ditutup sementara.
 
-Dua, lulus ujian bahasa. JFT-Basic, atau JLPT N4.
+Dua, lulus ujian bahasa. JFT-Basic, atau JLPT N4. JLPT cuma dua kali setahun, JFT-Basic jadwalnya lebih sering.
 
 Tiga, lulus ujian keterampilan sesuai bidangmu.
 
-Empat, buat paspor.
+Empat, buat paspor. Biaya resminya mulai enam ratus lima puluh ribu.
 
 Lima, cari lowongan lewat TSK, lembaga pendukung di Jepang. Pastikan terdaftar resmi di imigrasi Jepang. Lalu wawancara, dan tanda tangan kontrak kerja.
 
@@ -23,11 +23,11 @@ Enam, medical check-up. Hasilnya dipakai untuk pengajuan COE.
 
 Tujuh, perusahaan mengurus COE ke imigrasi Jepang.
 
-Delapan, siapkan SKCK dan psikotes, lalu daftar sebagai pekerja migran perseorangan di SISKOP2MI.
+Delapan, siapkan SKCK dan psikotes, biayanya maksimal lima ratus lima puluh ribu. Lalu daftar sebagai pekerja migran perseorangan di SISKOP2MI.
 
-Sembilan, ajukan visa di Kedutaan Jepang.
+Sembilan, ajukan visa di Kedutaan Jepang. Biaya visa sekali masuk satu juta enam ratus lima puluh ribu.
 
-Sepuluh, ikut orientasi pra pemberangkatan dan bayar BPJS pekerja migran. Setelah itu, berangkat.
+Sepuluh, ikut orientasi pra pemberangkatan dan bayar BPJS pekerja migran, tiga ratus tujuh puluh ribu untuk dua tahun. Setelah itu, berangkat.
 
 Mau dibimbing dari langkah pertama? Klik link di bio.
 ```
@@ -62,6 +62,14 @@ Cek pengucapan setelah generate: "TG" (harus "te-ge"), "TSK" (te-es-ka), "SISKOP
   SKCK + psikotes disiapkan untuk pendaftaran PMI (tes psikologi wajib BP2MI/KP2MI); orientasi
   + BPJS PMI setelah visa (BP3MI Sumbar). Tips "jangan buat SKCK terlalu awal, bisa
   kedaluwarsa" sumbernya hanya blog, tidak dipakai.
+
+- Tips per langkah (pemilik: "Oke buatin", 14 Okt 2026). Hanya angka yang sudah dicek:
+  paspor biasa 10 th Rp650.000 (PP 45/2024), psikotes maks Rp550.000 (KEPKA BP2MI 48/2023),
+  visa sekali masuk Rp1.650.000 (Kedubes Jepang, sejak 1 Juli 2026), BPJS PMI Rp370.000 kontrak
+  24 bulan (Permenaker 4/2023) = sama dengan video "Biaya TG mandiri" & landing. JLPT 2×
+  setahun (Juli & Desember). Restoran (外食業) ditutup sementara sejak 13 Apr 2026 (CLAUDE.md).
+  SENGAJA tidak dipakai: lokasi SKCK (Polres/Polda) & klinik MCU yang ditunjuk (sumber blog).
+  **Angka tarif HARDCODED per Oktober 2026**, perbarui kalau tarif berubah.
 
 ## Larangan brief
 
