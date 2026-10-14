@@ -135,6 +135,29 @@ test('a Percakapan whose source has no dialogue says so instead of an empty stag
   assert.equal(mounts.length, 0);
 });
 
+for (const courseSlug of ['n5', 'n4']) test(`${courseSlug}: one pattern is mounted before scenes and questions, preserving the original player`, () => {
+  const { module, course } = fixture();
+  module.lessons[3].grammar.push({ id: 'second-grammar', pattern: 'も', example_dialog: 'B: わたしもです。' });
+  const root = { innerHTML: '' }, order = [], players = [], stopped = [];
+  let controls;
+  const ctx = helpers({ currentState: { course: courseSlug }, document: { getElementById: () => root },
+    window: { EzConversationSteps: { mount: (_root, options) => { controls = options; order.push('steps'); } },
+      EzDialogue: { enhance: () => order.push('scene') },
+      EzDialogueQuestions: { mount: () => order.push('questions') } },
+    gkStopOne: key => stopped.push(key),
+    grammarKaraokeHtml: (...args) => { players.push(args); return '<div>Original player</div>'; } });
+  vm.runInContext(source('function renderConversationLesson(', '// ── Dialog player'), ctx);
+  ctx.renderConversationLesson(course, module, module.lessons[4], { prev: null, next: null, isDone: false });
+  assert.deepEqual(order, ['steps', 'scene', 'questions']);
+  assert.equal((root.innerHTML.match(/grammar-card conversation-step/g) || []).length, 2);
+  assert.equal(players.length, 2);
+  assert.equal(players[0].length, 6, 'the audio/transcript renderer has no progressive-line option');
+  assert.equal(players[0][4], 'grammar1-grammar', 'audio and questions keep the original grammar ID');
+  assert.match(root.innerHTML, /data-conversation-next/);
+  controls.onLeave({ querySelector: () => ({ id: 'gk-g1' }) });
+  assert.deepEqual(stopped, ['g1']);
+});
+
 function dialogueControlsFixture() {
   const saved = new Map([['ez_dialog_speed', '0.75'], ['ez_dialog_arti', 'tap']]);
   const players = [0, 1].map(() => ({

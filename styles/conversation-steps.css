@@ -1,0 +1,11 @@
+.conversation-step[hidden],
+.conversation-step-nav[hidden],
+.conversation-lesson-complete[hidden] { display: none !important; }
+.conversation-position { margin: 0 0 12px; color: #75675e; font-size: 13px; font-weight: 700; }
+.conversation-step { scroll-margin-top: calc(var(--student-header-height, 68px) + 16px); }
+.conversation-step h2:focus { outline: none; }
+.conversation-step-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.conversation-step-nav button { min-height: 44px; font: inherit; }
+@media (max-width: 600px) {
+  .conversation-step-nav button { flex: 1 1 180px; }
+}
