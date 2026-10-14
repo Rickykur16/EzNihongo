@@ -1,7 +1,7 @@
 // Supporting uses of the existing chapter kanji. Sentence grammar is cumulative.
 // These rows never add/remove kanji, vocabulary deck cards, or catalog readings.
 // Kana keeps a supporting sentence from requiring later kanji to be deciphered.
-const rows = [
+const sourceRows = [
   [4,'魚','魚','さかな','ikan','これは 魚です。','これは さかなです。','Ini ikan.'],
   [4,'本','本','ほん','buku','この 本は わたしのです。','この ほんは わたしのです。','Buku ini milik saya.'],
   [4,'本','日本語','にほんご','bahasa Jepang','これは 日本語の ほんです。','これは にほんごの ほんです。','Ini buku bahasa Jepang.'],
@@ -121,6 +121,10 @@ const rows = [
   [20,'来','来年','らいねん','tahun depan','にほんへ いったことが あります。来年も いきたいです。','にほんへ いったことが あります。らいねんも いきたいです。','Saya pernah ke Jepang. Tahun depan saya ingin pergi lagi.'],
   [20,'令','令和','れいわ','Reiwa (nama era Jepang)','この ほんは 令和 がんねんに かいました。','この ほんは れいわ がんねんに かいました。','Saya membeli buku ini pada tahun pertama era Reiwa.'],
 ];
+
+// Migration 213 swaps the complete original chapters 13/14. The authored rows
+// retain their source numbering; lookup/inventory use the current position.
+const rows = sourceRows.map(([chapter, ...fields]) => [chapter === 13 ? 14 : chapter === 14 ? 13 : chapter, ...fields]);
 
 export function n5ChapterKanjiSupport(character, chapter) {
   return rows.filter(([bab, characters]) => bab === chapter && characters.includes(character))

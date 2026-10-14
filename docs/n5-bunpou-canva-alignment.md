@@ -1,5 +1,10 @@
 # Pembagian Bunpou N5 berdasarkan Canva
 
+Catatan urutan 14 Oktober 2026: tabel ini memakai nomor sumber Canva historis.
+Setelah migrasi 213, sumber Bab 14 menjadi Bab 13 di platform dan sumber Bab 13
+menjadi Bab 14. Lihat [urutan bab saat ini](n5-chapter-order.md). ID/slug sumber
+dan pembagian slide tetap dipertahankan.
+
 Sumber dibaca langsung dari folder Canva **EZNihongo → BAB → Bunpou** pada 27 September 2026, lalu dibandingkan dengan panel admin aktif. Nomor slide adalah nomor halaman Canva, termasuk sampul. Sampul dibuka pada bagian pertama; penutup mengikuti bagian kedua.
 
 Judul Bab 3, 4, 5, dan 7 dipertahankan sesuai perbaikan pemilik. Pembagian mengikuti urutan slide yang berkesinambungan, dengan batas berdasarkan topik.

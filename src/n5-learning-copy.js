@@ -55,6 +55,9 @@
     '〜は[い-adj]くないです': 'Kata Sifat い → くないです',
     'Rumus belas': 'Membaca Angka Belasan',
   };
+  // Slugs identify the original material, not its current position. Migration
+  // 213 moves n5-b14 to Bab 13 and n5-b13 to Bab 14; their summaries travel
+  // with their content. Visible numbers come from the CMS title/module order.
   function chapter(module) { return Number(String(module.slug || module.id || '').match(/^n5-b(\d+)$/)?.[1]) || 0; }
   function clean(text) {
     return String(text || '').replace(/\bKB\s*([12])?/g, (_, n) => `kata benda${n ? ' ' + n : ''}`)
@@ -99,6 +102,32 @@
           return { ...lesson, sourceTitle: lesson.title, title: displayTitle };
         }),
       };
+    }) };
+  }
+  // The Notion reference is a separately refreshed source snapshot. Project
+  // the swapped chapters using the loaded CMS course; never mutate its cache
+  // or mistake a fresh Notion sync for a request to undo the curriculum order.
+  function prepareVocabularyReference(data, course) {
+    if (course?.level !== 'N5') return data;
+    const findModule = number => (course.modules || []).find(m => (m.slug || m.id) === `n5-b${number}`);
+    const old13 = findModule(13), old14 = findModule(14);
+    const visibleNumber = module => Number(String(module?.title || '').match(/^Bab\s*(\d+)\s*[:：]/i)?.[1]);
+    if (visibleNumber(old13) !== 14 || visibleNumber(old14) !== 13) return data;
+    const sections = Array.isArray(data.sections) && data.sections.length ? data.sections : null;
+    const chapters = sections ? sections.flatMap(s => s.bab || []) : data.bab || [];
+    const findChapter = number => chapters.find(b => new RegExp(`^N5-B0?${number}$`, 'i').test(b.kode || ''));
+    const source13 = findChapter(13), source14 = findChapter(14);
+    if (!source13 || !source14) return data;
+    const project = (bab, module, number) => ({ ...bab, kode: `N5-B${number}`, nomor: number,
+      name: module.title.replace(/^Bab\s*\d+\s*[:：]\s*/i, '') });
+    const new13 = project(source14, old14, 13), new14 = project(source13, old13, 14);
+    const replace = bab => bab === source13 ? new13 : bab === source14 ? new14 : bab;
+    if (!sections) return { ...data, bab: chapters.map(replace) };
+    return { ...data, sections: sections.map(section => {
+      const bab = section.bab || [];
+      const target = bab.includes(source13) && !bab.includes(source14) ? old14
+        : bab.includes(source14) && !bab.includes(source13) ? old13 : null;
+      return { ...section, name: target?.sectionName || target?.section_name || section.name, bab: bab.map(replace) };
     }) };
   }
   function intro(lesson, module, kind, count) {
@@ -175,5 +204,5 @@
     if (text === 'suka/benci ~') return 'Menyatakan suka atau tidak suka terhadap sesuatu.';
     return clean(text);
   }
-  root.EzN5Copy = { prepareCourse, intro, lessonBody, renderBody, pattern, meaning, clean, notes, numbers };
+  root.EzN5Copy = { prepareCourse, prepareVocabularyReference, intro, lessonBody, renderBody, pattern, meaning, clean, notes, numbers };
 })(typeof window !== 'undefined' ? window : globalThis);

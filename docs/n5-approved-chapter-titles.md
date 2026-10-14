@@ -16,8 +16,8 @@ Pembagian dan judul subbab mengikuti [pemetaan Canva](n5-bunpou-canva-alignment.
 | 10 | Aktivitas Sehari-hari |
 | 11 | Jumlah & Kata Bantu Bilangan |
 | 12 | Bentuk Te: Konjugasi & Urutan Tindakan |
-| 13 | Bentuk Te: Permintaan, Keadaan, Izin & Larangan |
-| 14 | Bentuk Biasa Kata Kerja & Kewajiban |
+| 13 | Bentuk Biasa Kata Kerja & Kewajiban |
+| 14 | Bentuk Te: Permintaan, Keadaan, Izin & Larangan |
 | 15 | Pelayanan, Pilihan & Perubahan |
 | 16 | Waktu, Tanggal & Jadwal |
 | 17 | Hobi & Kemampuan |
@@ -40,3 +40,12 @@ ditulis ulang. Semua judul subbab lainnya yang sebelumnya disetujui tetap.
 Migrasi 170 menyimpan judul sebelum/sesudah, berjalan dalam transaksi migrasi,
 memeriksa identitas bab melalui kursus dan slug pelajaran, dan tidak menimpa
 edit admin saat dijalankan ulang.
+
+Pembaruan urutan (14 Oktober 2026): pemilik meminta seluruh Bab 13 dan 14
+bertukar tempat. Migrasi 213 menukar posisi dan nomor tampilan beserta judul
+tes/tugas serta kode bab kanji. UUID dan slug tetap mengikuti materi asal:
+`n5-b14` sekarang ditampilkan sebagai Bab 13, `n5-b13` sebagai Bab 14.
+Riwayat progres, jawaban tes, sesi latihan, video, serta keanggotaan materi
+tetap pada identitas yang sama. Bagian 6 menjadi **Bentuk Kata Kerja** untuk
+Bab 12–13; Bab 14 mengikuti Bagian 7 yang memuat izin, larangan, dan pelayanan.
+Pemetaan/manifes migrasi lama mempertahankan nomor sumber historisnya.
