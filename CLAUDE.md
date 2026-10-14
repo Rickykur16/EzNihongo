@@ -81,6 +81,15 @@
   Manifes/migrasi lama tetap bernomor sumber historis. Rincian:
   `docs/n5-chapter-order.md`; tes: `backend/src/n5-chapter-swap.test.js`.
 
+- **Soal dialog N5 Bab 4 これ／それ／あれ diganti (migrasi 214)** (pemilik, 14 Okt 2026: "perbaiki
+  pertanyaan bunpou ... agar sesuai dg dialognya"; simpan lewat admin gagal). Soal pemahaman lama bisa
+  dijawab dari わたしのです (pola 〜の〜) tanpa paham これ／それ; soal penerapan lama menulis "jauh dari
+  tangan Anda" padahal kuncinya それ. Baris `grammar_dialog_questions` diperbarui DI TEMPAT (ID tetap,
+  `question_version` baru, `question_fingerprint` hasil `questionFingerprint()` ditulis di migrasi),
+  hanya bila dialognya masih teks 186. Backup `n5_b4_kosoado_questions_backup_214`. Manifes 186
+  (`dialogue-support.json`, `dialogues-04-11.mjs`) SENGAJA tidak diubah: itu catatan historis yang
+  di-hash. Penyebab gagal simpan di admin belum diketahui (pesan galatnya belum dilihat).
+
 - **Video TikTok/Reels: WAJIB baca `marketing/catatan-video-tiktok.md` dulu** (hasil video
   pertama yang FYP 10 Okt 2026, aturan hook/durasi/naskah/ElevenLabs v4, checklist, tabel
   hasil per video). Template & cara render: `marketing/biaya-ssw-src/` (lihat README-nya).
