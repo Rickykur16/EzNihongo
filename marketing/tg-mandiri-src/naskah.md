@@ -1,4 +1,4 @@
-# Naskah: "Tutorial TG mandiri: 7 langkah tanpa LPK" (±43 detik)
+# Naskah: "Tutorial TG mandiri: 10 langkah tanpa LPK" (±52 detik)
 
 Permintaan pemilik (14 Okt 2026): "Buatkan konten tutorial TG mandiri", hook dari pemilik "Save
 konten ini kalau kamu lagi cari tau cara step2 TG mandiri". Gaya sama dengan video LPK
@@ -7,21 +7,27 @@ konten ini kalau kamu lagi cari tau cara step2 TG mandiri". Gaya sama dengan vid
 ## Teks untuk ElevenLabs (Eleven v4, generate sekaligus)
 
 ```
-Save video ini kalau kamu lagi cari tahu cara TG mandiri. Ada tujuh langkah, tanpa LPK.
+Save video ini kalau kamu lagi cari tahu cara TG mandiri. Ada sepuluh langkah, tanpa LPK.
 
 Satu, pilih bidang kerjanya dulu. Misalnya perawat lansia, pabrik makanan, atau konstruksi.
 
 Dua, lulus ujian bahasa. JFT-Basic, atau JLPT N4.
 
-Tiga, lulus ujian keterampilan sesuai bidang yang kamu pilih.
+Tiga, lulus ujian keterampilan sesuai bidangmu.
 
-Empat, cari lowongan lewat TSK, lembaga pendukung di Jepang. Pastikan terdaftar resmi di imigrasi Jepang. Lalu wawancara, dan tanda tangan kontrak kerja.
+Empat, buat paspor.
 
-Lima, perusahaan mengurus COE, yaitu izin dari imigrasi Jepang.
+Lima, cari lowongan lewat TSK, lembaga pendukung di Jepang. Pastikan terdaftar resmi di imigrasi Jepang. Lalu wawancara, dan tanda tangan kontrak kerja.
 
-Enam, daftar sebagai pekerja migran perseorangan di SISKOP2MI, pakai COE dan kontrak kerjamu.
+Enam, medical check-up. Hasilnya dipakai untuk pengajuan COE.
 
-Tujuh, ajukan visa di Kedutaan Jepang, lalu ikut orientasi sebelum berangkat.
+Tujuh, perusahaan mengurus COE ke imigrasi Jepang.
+
+Delapan, siapkan SKCK dan psikotes, lalu daftar sebagai pekerja migran perseorangan di SISKOP2MI.
+
+Sembilan, ajukan visa di Kedutaan Jepang.
+
+Sepuluh, ikut orientasi pra pemberangkatan dan bayar BPJS pekerja migran. Setelah itu, berangkat.
 
 Mau dibimbing dari langkah pertama? Klik link di bio.
 ```
@@ -48,6 +54,14 @@ Cek pengucapan setelah generate: "TG" (harus "te-ge"), "TSK" (te-es-ka), "SISKOP
   urutan, sudah dibetulkan (orientasi di langkah 7). Nama lembaga sekarang KP2MI (dulu BP2MI);
   laman SISKOP2MI masih domain bp2mi.go.id.
 - Contoh bidang sengaja TIDAK memakai restoran (外食業 ditutup sementara sejak 13 Apr 2026).
+
+- 10 langkah (pemilik: "blom lengkap", pilih 1 video 10 langkah). Urutan tambahan dicek:
+  medical check-up SEBELUM COE (健康診断個人票 + 受診者の申告書 ada di daftar dokumen COE
+  Imigrasi Jepang, moj.go.jp/isa/content/001435944.pdf); paspor setelah ujian, sebelum melamar
+  (sumber soal ID ujian Prometric bertentangan: e-KTP vs paspor, jadi tidak diklaim di video);
+  SKCK + psikotes disiapkan untuk pendaftaran PMI (tes psikologi wajib BP2MI/KP2MI); orientasi
+  + BPJS PMI setelah visa (BP3MI Sumbar). Tips "jangan buat SKCK terlalu awal, bisa
+  kedaluwarsa" sumbernya hanya blog, tidak dipakai.
 
 ## Larangan brief
 

@@ -55,7 +55,7 @@ html,body{width:1080px;height:1920px;overflow:hidden;background:#000;font-family
 .fine{color:#9a9a9a;font-size:22px;font-weight:600;white-space:nowrap}
 </style></head>
 <body><div id="stage">
-<div class="bar" id="topbar"><span>Tutorial TG mandiri<br>7 langkah tanpa LPK</span></div>
+<div class="bar" id="topbar"><span>Tutorial TG mandiri<br>10 langkah tanpa LPK</span></div>
 <div id="panel"></div>
 <div class="bar" id="botbar"><span>Save dulu,<br>ini langkahnya !!</span></div>
 </div>
@@ -102,19 +102,22 @@ const NOTE=(hd,ttl)=>`<div class="note"><div class="tape"></div><svg class="clip
 // ===================== NASKAH & WAKTU =====================
 // Teks VO (sama dengan naskah.md). Dipakai at() untuk menaruh elemen pada kata yang diucapkan.
 const VO=[
- 'Save video ini kalau kamu lagi cari tahu cara TG mandiri. Ada tujuh langkah, tanpa LPK.',
+ 'Save video ini kalau kamu lagi cari tahu cara TG mandiri. Ada sepuluh langkah, tanpa LPK.',
  'Satu, pilih bidang kerjanya dulu. Misalnya perawat lansia, pabrik makanan, atau konstruksi.',
  'Dua, lulus ujian bahasa. JFT-Basic, atau JLPT N4.',
- 'Tiga, lulus ujian keterampilan sesuai bidang yang kamu pilih.',
- 'Empat, cari lowongan lewat TSK, lembaga pendukung di Jepang. Pastikan terdaftar resmi di imigrasi Jepang. Lalu wawancara, dan tanda tangan kontrak kerja.',
- 'Lima, perusahaan mengurus COE, yaitu izin dari imigrasi Jepang.',
- 'Enam, daftar sebagai pekerja migran perseorangan di SISKOP2MI, pakai COE dan kontrak kerjamu.',
- 'Tujuh, ajukan visa di Kedutaan Jepang, lalu ikut orientasi sebelum berangkat.',
+ 'Tiga, lulus ujian keterampilan sesuai bidangmu.',
+ 'Empat, buat paspor.',
+ 'Lima, cari lowongan lewat TSK, lembaga pendukung di Jepang. Pastikan terdaftar resmi di imigrasi Jepang. Lalu wawancara, dan tanda tangan kontrak kerja.',
+ 'Enam, medical check-up. Hasilnya dipakai untuk pengajuan COE.',
+ 'Tujuh, perusahaan mengurus COE ke imigrasi Jepang.',
+ 'Delapan, siapkan SKCK dan psikotes, lalu daftar sebagai pekerja migran perseorangan di SISKOP2MI.',
+ 'Sembilan, ajukan visa di Kedutaan Jepang.',
+ 'Sepuluh, ikut orientasi pra pemberangkatan dan bayar BPJS pekerja migran. Setelah itu, berangkat.',
  'Mau dibimbing dari langkah pertama? Klik link di bio.'];
 // SEG = detik mulai tiap paragraf. SEMENTARA perkiraan 2,7 kata/dtk; begitu MP3 ada, ganti
 // dengan jeda VO asli (ffmpeg silencedetect=n=-38dB:d=0.25), semua adegan ikut bergeser.
-const SEG=[0,6.38,11.27,14.68,18.47,27.06,30.85,36.11,40.64];
-const DUR=44.9;
+const SEG=[0, 6.38, 11.27, 14.68, 17.36, 18.92, 27.51, 30.93, 33.97, 39.24, 41.91, 47.17];
+const DUR=51.5;
 const segEnd=i=>i+1<SEG.length?SEG[i+1]:DUR, segDur=i=>segEnd(i)-SEG[i];
 // detik (relatif ke mulai paragraf i) saat kata `w` diucapkan, menurut proporsi huruf
 const at=(i,w)=>Math.max(0,segDur(i)-.3)*VO[i].indexOf(w)/VO[i].length;
@@ -126,13 +129,13 @@ const shot=(i,a,b,bg,html,o={})=>SPEC.push([i,a,b,bg,html,o]);
 // langkah: kartu kertas singkat "LANGKAH 0n / 07" lalu isi; r(i,w) = waktu kata di dalam isi
 const nd=i=>Math.min(.8,segDur(i)*.3);
 const r=(i,w)=>Math.max(.2,at(i,w)-nd(i));
-const step=(i,title,html,o={})=>{ shot(i,0,nd(i),'dark',NOTE(`LANGKAH ${String(i).padStart(2,'0')} / 07`,title),{note:1});
+const step=(i,title,html,o={})=>{ shot(i,0,nd(i),'dark',NOTE(`LANGKAH ${String(i).padStart(2,'0')} / 10`,title),{note:1});
   shot(i,nd(i),null,'dark',html,Object.assign({whip:1},o)); };
 
 // Hook: klaim SUDAH tampil penuh di frame 0 (data-in negatif).
 const h1=at(0,'Ada')-.2;
-shot(0,0,h1,'dark',`${L('tutorial',0,100,-1,null,48)}${B('7 LANGKAH',0,190,-1,170)}${S('Tokutei Ginou mandiri, tanpa LPK',0,395,-1,null,'font-size:44px')}`,{center:1,hit:[[0.05,'impact',1]]});
-shot(0,h1,null,'dark',`${S('cukup',0,140,0.05,null,'font-size:40px')}${B('7 LANGKAH',0,190,0.2,150)}${L('tanpa LPK',0,380,0.9,null,56)}`,{center:1,whip:1,hit:[[0.25,'impact',2]]});
+shot(0,0,h1,'dark',`${L('tutorial',0,100,-1,null,48)}${B('10 LANGKAH',0,200,-1,148)}${S('Tokutei Ginou mandiri, tanpa LPK',0,395,-1,null,'font-size:44px')}`,{center:1,hit:[[0.05,'impact',1]]});
+shot(0,h1,null,'dark',`${S('cukup',0,140,0.05,null,'font-size:40px')}${B('10 LANGKAH',0,200,0.2,140)}${L('tanpa LPK',0,380,0.9,null,56)}`,{center:1,whip:1,hit:[[0.25,'impact',2]]});
 step(1,'Pilih bidang',`${ico('building',70,140,300,0.05)}${L('contoh bidang',430,80,0.1)}
   ${B('perawat lansia',430,150,r(1,'perawat'),62)}${B('pabrik makanan',430,250,r(1,'pabrik'),62)}${B('konstruksi',430,350,r(1,'konstruksi'),62)}
   ${S('+ bidang lain',434,460,r(1,'konstruksi')+.6)}`);
@@ -143,17 +146,20 @@ step(2,'Ujian bahasa',`<div class="strip" style="position:absolute;left:0;top:0;
      <svg class="a" viewBox="0 0 400 120" style="left:820px;top:120px;width:520px;height:160px;overflow:visible"><path class="arrow" d="M10 100 C120 0 280 0 390 70" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" pathLength="1"/><path class="arrowh" d="M360 40 L392 72 L350 82" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg>
      <div class="a" style="left:1080px;top:0;width:1080px;height:608px">${L('atau',0,70,s2+.3)}${B('JLPT N4',0,190,s2+.35,150,null,'width:1080px;left:0;text-align:center')}${S('ujian 2× setahun',0,370,s2+.8,null,'width:1080px;left:0;text-align:center;font-size:40px')}</div>
    </div>`,{center:1,strip:[s2-.3,s2+.25]});
-step(3,'Ujian keterampilan',`${ico('clip',70,150,300,0.05)}${L('sesuai bidang kerjamu',430,120,0.2)}${B('UJIAN SKILL',430,190,0.5,96)}${S('jadwal &amp; bidang: ssw.go.jp',434,330,1.2)}`);
-step(4,'Cari TSK',`${ico('shield',70,140,300,0.05)}${L('Tōroku Shien Kikan',430,60,0.1,null,30)}${B('CARI TSK',430,120,0.3,110)}
+step(3,'Ujian keterampilan',`${ico('clip',70,150,300,0.05)}${L('sesuai bidang kerjamu',430,120,0.2)}${B('UJIAN SKILL',430,190,0.5,96)}${S('jadwal &amp; bidang: ssw.go.jp',434,330,1.0)}`);
+step(4,'Paspor',`${ico('passport',70,140,300,0.05,.8)}${L('dokumen wajib',430,120,0.1)}${B('PASPOR',430,190,0.3,140)}${S('dipakai sampai visa',434,360,0.8)}`);
+step(5,'Cari TSK',`${ico('shield',70,140,300,0.05)}${L('Tōroku Shien Kikan',430,60,0.1,null,30)}${B('CARI TSK',430,120,0.3,110)}
   ${S('lembaga pendukung di Jepang',434,245,0.9)}
-  ${L('1 · cek terdaftar resmi',430,320,r(4,'Pastikan'),null,36)}${L('2 · wawancara',430,395,r(4,'wawancara'),null,36)}${L('3 · kontrak kerja',430,470,r(4,'kontrak'),null,36)}`);
-step(5,'COE',`${ico('docs',70,140,300,0.05)}${L('diurus perusahaan',430,100,0.1)}${B('COE',430,165,0.4,170)}${S('izin dari imigrasi Jepang',434,365,r(5,'izin'))}`);
-step(6,'Daftar PMI',`${ico('card',60,150,320,0.05,.8)}${L('pekerja migran perseorangan',430,100,0.1,null,30)}${B('SISKOP2MI',430,170,r(6,'SISKOP2MI'),90)}
-  ${L('syarat: COE + kontrak kerja',430,330,r(6,'pakai'),null,32)}`);
-step(7,'Visa',`${ico('visa',70,140,300,0.05,.8)}${L('di Kedutaan Jepang',430,100,0.1)}${B('VISA',430,165,0.4,170)}
-  ${L('+ orientasi sebelum berangkat',430,370,r(7,'orientasi'),null,30)}`);
-shot(8,0,null,'dark',`<div class="note" style="left:200px;top:40px;width:680px;height:300px"><div class="tape"></div><img src="logo-a.png" data-in="0.15" class="a" style="left:90px;top:5px;width:500px"></div>
-   ${S('bimbingan TG mandiri dari langkah 1',0,370,0.5,null,'font-size:34px')}${L('klik link di bio',0,430,at(8,'Klik'),null,52)}
+  ${L('1 · cek terdaftar resmi',430,320,r(5,'Pastikan'),null,36)}${L('2 · wawancara',430,395,r(5,'wawancara'),null,36)}${L('3 · kontrak kerja',430,470,r(5,'kontrak'),null,36)}`);
+step(6,'Medical check-up',`${ico('steth',70,140,300,0.05)}${L('cek kesehatan',430,110,0.1)}${B('MCU',430,175,0.3,170)}${L('hasilnya untuk COE',430,380,r(6,'Hasilnya'),null,36)}`);
+step(7,'COE',`${ico('docs',70,140,300,0.05)}${L('diurus perusahaan',430,100,0.1)}${B('COE',430,165,0.4,170)}${S('ke imigrasi Jepang',434,365,r(7,'imigrasi'))}`);
+step(8,'Daftar PMI',`${ico('card',60,150,320,0.05,.8)}${L('siapkan: SKCK + psikotes',430,90,0.2,null,32)}${B('SISKOP2MI',430,170,r(8,'daftar'),90)}
+  ${L('pekerja migran perseorangan',430,320,r(8,'perseorangan'),null,30)}`);
+step(9,'Visa',`${ico('visa',70,140,300,0.05,.8)}${L('di Kedutaan Jepang',430,110,0.1)}${B('VISA',430,175,0.3,170)}`);
+step(10,'Orientasi & BPJS',`${ico('plane',60,150,320,0.05,.9)}${L('orientasi pra pemberangkatan',430,90,0.1,null,30)}${L('+ BPJS pekerja migran',430,160,r(10,'bayar'),null,30)}
+  ${S('setelah itu',434,270,r(10,'Setelah'))}${B('BERANGKAT',430,320,r(10,'berangkat'),88)}`);
+shot(11,0,null,'dark',`<div class="note" style="left:200px;top:40px;width:680px;height:300px"><div class="tape"></div><img src="logo-a.png" data-in="0.15" class="a" style="left:90px;top:5px;width:500px"></div>
+   ${S('bimbingan TG mandiri dari langkah 1',0,370,0.5,null,'font-size:34px')}${L('klik link di bio',0,430,at(11,'Klik'),null,52)}
    <div class="a fine" data-in="2.0" style="${center};top:548px">Info per Oktober 2026, aturan bisa berubah. Cek lagi ke sumber resmi.</div>`,{center:1,end:1});
 
 const SHOTS=SPEC.map(([i,a,b,bg,html,o])=>[SEG[i]+a, b===null?segEnd(i):SEG[i]+b, bg, html, o]);
