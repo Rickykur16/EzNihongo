@@ -81,14 +81,21 @@
   Manifes/migrasi lama tetap bernomor sumber historis. Rincian:
   `docs/n5-chapter-order.md`; tes: `backend/src/n5-chapter-swap.test.js`.
 
-- **Soal dialog N5 Bab 4 これ／それ／あれ diganti (migrasi 214)** (pemilik, 14 Okt 2026: "perbaiki
-  pertanyaan bunpou ... agar sesuai dg dialognya"; simpan lewat admin gagal). Soal pemahaman lama bisa
-  dijawab dari わたしのです (pola 〜の〜) tanpa paham これ／それ; soal penerapan lama menulis "jauh dari
-  tangan Anda" padahal kuncinya それ. Baris `grammar_dialog_questions` diperbarui DI TEMPAT (ID tetap,
-  `question_version` baru, `question_fingerprint` hasil `questionFingerprint()` ditulis di migrasi),
-  hanya bila dialognya masih teks 186. Backup `n5_b4_kosoado_questions_backup_214`. Manifes 186
-  (`dialogue-support.json`, `dialogues-04-11.mjs`) SENGAJA tidak diubah: itu catatan historis yang
-  di-hash. Penyebab gagal simpan di admin belum diketahui (pesan galatnya belum dilihat).
+- **Soal dialog N5 Bab 4 これ／それ／あれ diganti — skrip finalize, BUKAN migrasi SQL** (pemilik,
+  14 Okt 2026: soal tidak sesuai dialog, simpan lewat admin gagal, lalu "Percakapan pertama blom ada
+  pertanyaannya"). Soal lama: pemahaman bisa dijawab dari わたしのです (〜の〜) tanpa paham これ／それ;
+  penerapan menulis "jauh dari tangan Anda" padahal kuncinya それ. **Kenapa soal hilang dari siswa**:
+  `listLearnerDialogueQuestions` membuang soal yang `dialogue_fingerprint`-nya tidak sama dengan dialog
+  sekarang — dialog yang diedit di admin membuat soal basi dan tak terlihat, dan editor juga menolak
+  menyimpan set berisi soal "dari dialog lama". Karena teks dialog produksi tidak terlihat dari sandbox,
+  draf migrasi SQL 214 (menulis untuk teks 186) DIBUANG sebelum merge: ia akan melewati dialog yang
+  sudah diedit. Gantinya `scripts/finalize-n5-b4-kosoado-questions.mjs` (ikut `npm run migrate`): pakai
+  `saveDialogueQuestions` asli terhadap dialog SAAT INI (fingerprint, versi, validasi batas kurikulum),
+  kutipan bukti dicari tanpa peduli spasi, ID soal lama dipakai ulang, teks tanpa nama tokoh. **Sekali
+  jalan**: penanda `app_settings.finalize_n5_b4_kosoado_questions`, jadi editan admin sesudahnya tidak
+  ditimpa deploy. Kalau dialognya tidak lagi punya pasangan それ/これ, skrip melewati dengan alasan di log.
+  Kegagalan apa pun hanya dicatat (exit 0), tidak menggagalkan deploy. Tes:
+  `n5-b4-kosoado-questions.test.js` (Postgres asli + DDL 165, dua mutasi tertangkap).
 
 - **Video TikTok/Reels: WAJIB baca `marketing/catatan-video-tiktok.md` dulu** (hasil video
   pertama yang FYP 10 Okt 2026, aturan hook/durasi/naskah/ElevenLabs v4, checklist, tabel
