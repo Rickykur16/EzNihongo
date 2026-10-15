@@ -4888,6 +4888,7 @@
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
 <link rel="stylesheet" href="styles/dialogue-scene.css?v=5">
 <link rel="stylesheet" href="styles/conversation-steps.css?v=20261014-1">
+<link rel="stylesheet" href="styles/bunpou-pattern-steps.css?v=20261015-1">
 <link rel="stylesheet" href="styles/dialogue-questions.css?v=20260927-1">
 <link rel="stylesheet" href="maneko.css?v=20260926-1">
 <script src="maneko.js?v=20261009-header-focus"></script>
@@ -4991,6 +4992,7 @@ function getUserName(user = session) {
 <script src="src/dialogue-furigana.js?v=1"></script>
 <script src="src/dialogue-scene.js?v=4"></script>
 <script src="src/conversation-steps.js?v=20261014-1"></script>
+<script src="src/bunpou-pattern-steps.js?v=20261015-1"></script>
 <script src="src/dialogue-questions.js?v=20261009-selection"></script>
 <script src="learning-state.js?v=20260911-1"></script>
 <script src="src/bunny-video.js?v=20261008-1"></script>
@@ -10401,7 +10403,8 @@ function gtCardsHtml(items, sttOn, showDots) {
   }
   const sessionNotice = window.__gtSourceLesson?.apiId
     ? '<div id="gt-session-notice" class="gt-callout" role="status" aria-live="polite" hidden></div>' : '';
-  return sessionNotice + items.map((it, pi) => {
+  const stepped = typeof currentState !== 'undefined' && ['n5', 'n4'].includes(currentState.course);
+  const cards = items.map((it, pi) => {
     const count = Math.max(1, Number(it.requiredCount) || 1);
     const pattern = escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.pattern(it.pattern) : (it.pattern || ''));
     const meaning = escapeHtml(typeof currentState !== 'undefined' && currentState.course === 'n5' && globalThis.EzN5Copy ? globalThis.EzN5Copy.meaning(it.meaning) : (it.meaning || ''));
@@ -10415,7 +10418,7 @@ function gtCardsHtml(items, sttOn, showDots) {
     return `
     <article class="gt-card" data-grammar-id="${escapeHtml(it.id || '')}">
       <div class="gt-card__chip">文法 · Pola ${pi + 1}</div>
-      <div class="gt-card__pattern" lang="ja">${showDots ? `<span class="ba-dot" data-ba-dot="${escapeHtml(it.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>` : ''}${pattern}</div>
+      <div class="gt-card__pattern" lang="ja" ${stepped ? 'role="heading" aria-level="2" tabindex="-1"' : ''}>${showDots ? `<span class="ba-dot" data-ba-dot="${escapeHtml(it.id || '')}" style="background:var(--du-border);" title="Belum dianalisis"></span>` : ''}${pattern}</div>
       ${meaning ? `<div class="gt-card__meaning" id="gt-meaning-${pi}">${meaning}</div>` : ''}
       ${example ? `<div class="gt-card__example">
         <button type="button" class="gt-card__example-audio" aria-label="Dengar contoh" onclick="gtPlayExample(${pi}, this)">🔊</button>
@@ -10448,6 +10451,16 @@ function gtCardsHtml(items, sttOn, showDots) {
       </div>
     </article>`;
   }).join('');
+  if (!stepped) return sessionNotice + cards;
+  return `${sessionNotice}<div class="gt-pattern-steps">
+    <p class="gt-pattern-position" data-gt-pattern-position role="status" aria-live="polite"></p>
+    ${cards}
+    <p class="gt-pattern-status" data-gt-pattern-status role="status" aria-live="polite" hidden></p>
+    <nav class="gt-pattern-nav" aria-label="Urutan pola Bunpou" hidden>
+      <button class="btn-secondary" type="button" data-gt-pattern-prev>← Pola sebelumnya</button>
+      <button class="btn-primary" type="button" data-gt-pattern-next>Pola berikutnya →</button>
+    </nav>
+  </div>`;
 }
 
 // ── Step 1 & 2: latihan terarah sebelum produksi ──────────────────────────
@@ -11241,6 +11254,13 @@ window.gtRetryReveal = async (pi, step) => {
   gtAdvance(pi, step);
 };
 
+function gtMountPatternSteps(root) {
+  window.EzBunpouSteps?.mount?.(root, {
+    canLeave: () => !_gtRec,
+    onLeave: () => { try { _stopAllTts(); } catch {} },
+  });
+}
+
 function renderGrammarTaskLesson(course, module, lesson, nav) {
   const { prev, next, isDone } = nav;
   const items = Array.isArray(lesson.grammarTask) ? lesson.grammarTask : [];
@@ -11278,6 +11298,7 @@ function renderGrammarTaskLesson(course, module, lesson, nav) {
       <button class="btn-primary" id="gt-complete-btn" onclick="markCompleteAndNext(this)"></button>
     </div>
   `;
+  gtMountPatternSteps(document.getElementById('main-content'));
   gtUpdateComplete();
   gtLoadDrills(lesson.apiId);
   // Di sinilah percobaan dibuat, jadi analisisnya paling berguna di sini:
@@ -11331,6 +11352,7 @@ function openGrammarTaskPopup(course, taskMod, taskLesson, onDone) {
   // kalau tidak, Step 3 di popup terkunci selamanya di "Memuat…".
   setTimeout(() => gtLoadDrills(taskLesson.apiId), 0);
   document.body.appendChild(overlay);
+  gtMountPatternSteps(overlay);
   document.body.style.overflow = 'hidden';
   setTutorHidden(true); // popup tugas = sedang dinilai, sembunyikan Maneko-chan
   if (!window.__gtPopupEscWired) {
