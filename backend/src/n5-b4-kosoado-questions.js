@@ -15,35 +15,29 @@ export const KOSOADO_SOURCE_LESSON_ID = 'c05893dc-051b-4a6b-bd04-cbd5d1f204ea';
 // One-shot: once applied, later admin edits to this set are never overwritten.
 export const KOSOADO_DONE_KEY = 'finalize_n5_b4_kosoado_questions';
 
-const ASK = 'それは ほんですか';
-const ANSWER = 'これは ほんです';
-const squeeze = value => String(value || '').normalize('NFC').replace(/[\s　]+/gu, '');
+// The live dialogue can differ in spelling from the 186 text (kanji 本 instead
+// of ほん, ？ instead of 。, spacing). The pair is therefore found by structure:
+// one speaker asks 「それは…か」 and the next speaker answers 「これは…です」.
+// Quotes are exact substrings of the stored turns (the service requires it).
+const ASK_RE = /それは[^。、？?！!\n]*?か/u;
+const ANSWER_RE = /これは[^。、？?！!\n]*?です/u;
 
-// Finds `wanted` in a turn while ignoring spacing, and returns the exact
-// substring of the stored turn (the service requires a literal match).
-export function findQuote(text, wanted) {
-  const source = String(text || '').normalize('NFC');
-  const target = squeeze(wanted);
-  const kept = [];
-  for (let index = 0; index < source.length; index += 1) {
-    if (!/[\s　]/u.test(source[index])) kept.push(index);
-  }
-  const at = kept.map(index => source[index]).join('').indexOf(target);
-  if (!target || at < 0) return null;
-  return source.slice(kept[at], kept[at + target.length - 1] + 1);
+export function findQuote(text, pattern) {
+  const match = String(text || '').normalize('NFC').match(pattern);
+  return match ? match[0] : null;
 }
 
 export function kosoadoQuestions(turns) {
   for (let index = 0; index + 1 < turns.length; index += 1) {
-    const ask = findQuote(turns[index].text, ASK);
-    const answer = findQuote(turns[index + 1].text, ANSWER);
+    const ask = findQuote(turns[index].text, ASK_RE);
+    const answer = findQuote(turns[index + 1].text, ANSWER_RE);
     if (!ask || !answer || turns[index].speaker === turns[index + 1].speaker) continue;
     return [{
       kind: 'comprehension', sortOrder: 0,
-      prompt: 'Seseorang bertanya 「それは ほんですか」, lalu lawan bicaranya menjawab 「はい、これは ほんです」. Buku itu ada di dekat siapa?',
+      prompt: `Seseorang bertanya 「${ask}」, lalu lawan bicaranya menjawab 「${answer}」. Benda itu ada di dekat siapa?`,
       options: ['Dekat orang yang menjawab.', 'Dekat orang yang bertanya.', 'Jauh dari keduanya.'],
       correctIndex: 0,
-      explanation: 'Penanya memakai それ karena buku itu dekat lawan bicaranya. Penjawab memakai これ karena buku itu dekat dirinya sendiri. Bendanya sama, kata penunjuknya mengikuti posisi pembicara.',
+      explanation: 'Penanya memakai それ karena benda itu dekat lawan bicaranya. Penjawab memakai これ karena benda itu dekat dirinya sendiri. Bendanya sama, kata penunjuknya mengikuti posisi pembicara.',
       evidence: [{ turnIndex: index, quote: ask }, { turnIndex: index + 1, quote: answer }],
     }, {
       kind: 'transfer', sortOrder: 0,
@@ -75,8 +69,10 @@ export async function finalizeN5B4KosoadoQuestions({ transaction = withTransacti
       }
       const questions = kosoadoQuestions(context.turns);
       if (!questions) {
+        // The whole (public) dialogue goes to the deploy log so a follow-up can
+        // be written against the real text.
         return { status: 'skipped', reason: 'dialogue_changed',
-          firstTurn: context.turns[0] ? `${context.turns[0].speaker}: ${context.turns[0].text}` : null };
+          turns: context.turns.map(turn => `${turn.speaker}: ${turn.text}`) };
       }
       const rows = (await client.query(`SELECT * FROM grammar_dialog_questions
         WHERE grammar_id=$1 ORDER BY kind,sort_order,id`, [KOSOADO_GRAMMAR_ID])).rows;

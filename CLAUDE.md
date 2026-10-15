@@ -94,6 +94,11 @@
   kutipan bukti dicari tanpa peduli spasi, ID soal lama dipakai ulang, teks tanpa nama tokoh. **Sekali
   jalan**: penanda `app_settings.finalize_n5_b4_kosoado_questions`, jadi editan admin sesudahnya tidak
   ditimpa deploy. Kalau dialognya tidak lagi punya pasangan それ/これ, skrip melewati dengan alasan di log.
+  **Deploy pertama (#464, 15 Okt) MELEWATI** dengan `dialogue_changed`: dialog produksi sudah diedit
+  jadi 「アンナ: それは本ですか？」 (kanji 本, ？), sedangkan pencocok masih mencari teks 186
+  「それは ほんですか」. Sekarang pasangan dicari lewat STRUKTUR (giliran 「それは…か」 lalu giliran
+  pembicara lain 「これは…です」), kutipan + teks soal memakai ejaan dialog yang ada, dan log `skipped`
+  mencetak seluruh giliran supaya perbaikan berikutnya ditulis dari teks asli.
   Kegagalan apa pun hanya dicatat (exit 0), tidak menggagalkan deploy. Tes:
   `n5-b4-kosoado-questions.test.js` (Postgres asli + DDL 165, dua mutasi tertangkap).
 
