@@ -6237,6 +6237,47 @@ function admDialogQuestionSourceMessage() {
   return 'Dialog belum tersimpan atau berubah. Klik “Isi ke baris”, simpan baris grammar, lalu buka kembali editor pertanyaan.';
 }
 
+// Menyimpan dialog dari modal ini menjaga draft pertanyaan tetap di layar.
+// Pertanyaan lama tetap harus ditinjau satu per satu sebelum dapat disimpan.
+window.admDialogQuestionSaveSource = async () => {
+  const state = window.__dialogQuestionState;
+  const tr = window.__dialogTr;
+  const saveButton = tr?.querySelector('[data-save-row]');
+  if (!state || !tr || !saveButton || state.busy) {
+    notify('Dialog ini belum bisa disimpan dari editor pertanyaan.', true);
+    return;
+  }
+  state.busy = true;
+  admRenderDialogModal();
+  try {
+    await window.saveItemRow(saveButton);
+    const sourcePersisted = ['example_dialog', 'example_dialog_id', 'dialog_scene']
+      .every(name => {
+        const input = tr.querySelector(`[name="${name}"]`);
+        return !input || input.value === input.defaultValue;
+      });
+    if (!sourcePersisted) {
+      notify('Dialog belum tersimpan. Periksa pesan error pada baris grammar lalu coba lagi.', true);
+      return;
+    }
+    const params = new URLSearchParams({ sourceLessonId: state.sourceLessonId });
+    const questionSet = await api(`/admin/grammar/${encodeURIComponent(state.grammarId)}/dialogue-questions?${params}`);
+    state.dialogueFingerprint = questionSet.dialogueFingerprint || '';
+    state.questionsRevision = questionSet.questionsRevision || '';
+    state.sourcePersisted = true;
+    state.savedDialogueSnapshot = admDialogQuestionSourceSnapshot();
+    state.questions.forEach(question => {
+      if (question.id) question.current = false;
+    });
+    notify('Dialog tersimpan. Tinjau setiap pertanyaan lama, lalu tandai sebagai sudah ditinjau sebelum menyimpan set.', true);
+  } catch (err) {
+    notify('Gagal menyimpan dialog: ' + (err.message || 'coba lagi.'), true);
+  } finally {
+    state.busy = false;
+    admRenderDialogModal();
+  }
+};
+
 function admDialogQuestionError(label, error) {
   const code = error?.body?.error || error?.body?.detail || '';
   if (error?.status === 409 && /question_revision_conflict/i.test(code)) {
@@ -6262,7 +6303,7 @@ function admDialogQuestionSetHtml() {
       <h4 style="margin:0 0 6px;">Pertanyaan dialog Bunpou</h4>
       <p style="font-size:12px;color:#737373;margin:0 0 8px;">Set aktif: ${comprehension}/2 comprehension · ${transfer}/1 transfer. Pertanyaan terikat ke dialog tersimpan; tombol simpan langsung memperbarui set aktif learner.</p>
       ${state.loadError ? `<div role="alert" style="color:#991b1b;margin:6px 0;">Gagal memuat set pertanyaan: ${escapeHtml(state.loadError)}</div>` : ''}
-      ${!state.loadError && (questions.some(question => question.current === false) || !admDialogQuestionSourceIsCurrent()) ? `<div role="alert" style="color:#92400e;margin:6px 0;">Dialog sumber berubah atau belum tersimpan. Simpan dialog lalu buka kembali editor pertanyaan sebelum generate/menyimpan.</div>` : ''}
+      ${!state.loadError && (questions.some(question => question.current === false) || !admDialogQuestionSourceIsCurrent()) ? `<div role="alert" style="color:#92400e;margin:6px 0;">Dialog sumber berubah atau belum tersimpan. Simpan dialog lalu buka kembali editor pertanyaan.${!admDialogQuestionSourceIsCurrent() ? ` Atau <button type="button" class="btn btn-ghost btn-sm" ${state.busy ? 'disabled' : ''} onclick="admDialogQuestionSaveSource()">simpan dialog &amp; perbarui status</button>` : ''}</div>` : ''}
       <fieldset ${state.busy ? 'disabled' : ''} style="border:0;padding:0;margin:0;min-width:0;">
       <div id="dlg-question-rows">${questions.map((question, index) => admDialogQuestionCardHtml(question, index)).join('')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
@@ -6291,7 +6332,7 @@ function admDialogQuestionCardHtml(question, index) {
     </div>
     <label style="display:block;margin-top:6px;">Penjelasan<input style="width:100%;box-sizing:border-box;" value="${escapeHtml(question.explanation || '')}" oninput="admDialogQuestionEdit(${index},'explanation',this.value)"></label>
     ${question.kind === 'comprehension' ? `<div style="margin-top:8px;"><strong>Bukti dari dialog</strong>${evidence.map((entry, evidenceIndex) => `<div style="display:flex;gap:6px;margin-top:4px;"><input type="number" min="0" aria-label="Nomor giliran bukti" value="${Number.isInteger(entry.turnIndex) ? entry.turnIndex : 0}" style="width:72px;" oninput="admDialogQuestionEvidence(${index},${evidenceIndex},'turnIndex',this.value)"><input aria-label="Kutipan bukti" placeholder="Kutipan persis dari giliran" style="flex:1;" value="${escapeHtml(entry.quote || '')}" oninput="admDialogQuestionEvidence(${index},${evidenceIndex},'quote',this.value)"><button type="button" class="btn btn-ghost btn-sm" onclick="admDialogQuestionEvidenceDelete(${index},${evidenceIndex})">×</button></div>`).join('')}<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="admDialogQuestionEvidenceAdd(${index})">+ Bukti</button></div>` : ''}
-    ${question.current === false ? '<div role="alert" style="color:#92400e;margin-top:6px;">Pertanyaan ini berasal dari versi dialog sebelumnya.</div>' : ''}
+    ${question.current === false ? `<div role="alert" style="color:#92400e;margin-top:6px;">Pertanyaan ini berasal dari versi dialog sebelumnya. <button type="button" class="btn btn-ghost btn-sm" onclick="admDialogQuestionReview(${index})">Tandai sudah ditinjau</button></div>` : ''}
   </article>`;
 }
 
@@ -6307,6 +6348,12 @@ function admDialogQuestionMarkEdited(question) {
     question.current = true;
   }
 }
+window.admDialogQuestionReview = index => {
+  const question = window.__dialogQuestionState?.questions?.[index];
+  if (!question) return;
+  admDialogQuestionMarkEdited(question);
+  admRenderDialogModal();
+};
 window.admDialogQuestionOption = (index, optionIndex, value) => {
   const question = window.__dialogQuestionState?.questions?.[index];
   if (!question) return;
