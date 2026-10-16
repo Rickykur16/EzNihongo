@@ -655,7 +655,8 @@
   .lessons > .lessons-inner {
     list-style: none; margin: 0; padding: 0; min-height: 0; overflow: hidden;
   }
-  .module.open .lessons,
+  .sidebar-section.open .module.open .lessons,
+  .modules-list.filtering .sidebar-section.filter-hit .module.open .lessons,
   .modules-list.filtering .module.filter-lessons .lessons {
     grid-template-rows: 1fr; visibility: visible; transition-delay: 0s;
   }
@@ -14466,6 +14467,19 @@ function _sectionOfModule(moduleId) {
   return (mod && mod.sectionName && mod.sectionName.trim()) || 'Lainnya';
 }
 
+// Membuka sebuah pelajaran membuka Bagian + Bab-nya dan menutup yang lain.
+// Bab di Bagian lain ikut dihapus dari state: kalau tertinggal, daftar
+// pelajarannya tetap "terbuka" di dalam Bagian yang tertutup.
+function expandSidebarTo(moduleId) {
+  const sec = _sectionOfModule(moduleId);
+  _expandedSections.clear();
+  _expandedSections.add(sec);
+  for (const otherId of [..._expandedModules]) {
+    if (otherId !== moduleId) _expandedModules.delete(otherId);
+  }
+  _expandedModules.add(moduleId);
+}
+
 function selectLearningView(moduleId, lessonId, view) {
   const course = COURSE_CONTENT[currentState.course];
   const module = course?.modules?.find(item => item.id === moduleId);
@@ -14484,17 +14498,7 @@ function selectLearningView(moduleId, lessonId, view) {
     clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null;
   }
 
-  // Picking a lesson auto-opens its section + module; close sibling modules
-  // in the same section (module-level mutex). Other sections stay closed.
-  const sec = _sectionOfModule(moduleId);
-  _expandedSections.clear();
-  _expandedSections.add(sec);
-  for (const otherId of [..._expandedModules]) {
-    if (otherId !== moduleId && _sectionOfModule(otherId) === sec) {
-      _expandedModules.delete(otherId);
-    }
-  }
-  _expandedModules.add(moduleId);
+  expandSidebarTo(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = lessonId;
   currentState.view = view;
@@ -14519,13 +14523,7 @@ window.selectModuleIntro = (moduleId) => {
   try { destroyAllListeningPlayers(); } catch {}
   try { window.closeKanjiDetail?.(); } catch {}
   try { window.closeKanaModal?.(); } catch {}
-  const sec = _sectionOfModule(moduleId);
-  _expandedSections.clear();
-  _expandedSections.add(sec);
-  for (const otherId of [..._expandedModules]) {
-    if (otherId !== moduleId && _sectionOfModule(otherId) === sec) _expandedModules.delete(otherId);
-  }
-  _expandedModules.add(moduleId);
+  expandSidebarTo(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = null;
   currentState.view = 'intro';
@@ -14897,9 +14895,14 @@ window.toggleSidebarSection = (name) => {
 // area terlihat. Dipanggil saat pelajaran berganti dan saat laci HP dibuka.
 function revealCurrentLessonInSidebar() {
   const scroller = document.querySelector('#sidebar .sidebar-scroll');
-  const current = scroller?.querySelector('.lesson-item.current')
-    || scroller?.querySelector('.module.current .module-header');
-  if (!scroller || !current || !current.getClientRects().length) return;
+  // Hanya baris yang benar-benar terlihat: elemen di dalam Bab/Bagian yang
+  // tertutup tetap punya kotak di DOM, jadi getClientRects() tidak cukup.
+  const shown = (el) => el && el.getClientRects().length
+    && getComputedStyle(el).visibility === 'visible';
+  const lesson = scroller?.querySelector('.lesson-item.current');
+  const header = scroller?.querySelector('.module.current .module-header');
+  const current = shown(lesson) ? lesson : (shown(header) ? header : null);
+  if (!scroller || !current) return;
   const box = scroller.getBoundingClientRect();
   const r = current.getBoundingClientRect();
   if (r.top >= box.top + 8 && r.bottom <= box.bottom - 8) return;
@@ -14947,6 +14950,7 @@ window.markCompleteAndNext = async (triggerButton) => {
   const advance = () => {
     if (!stillHere()) return;
     if (next) {
+      if (next.module.id !== currentState.moduleId) expandSidebarTo(next.module.id);
       currentState.moduleId = next.module.id;
       currentState.lessonId = next.lesson.id;
       currentState.view = next.kind;
