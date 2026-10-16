@@ -617,8 +617,6 @@
     grid-template-rows: 1fr; visibility: visible; transition-delay: 0s;
   }
   .modules-list.filtering .sidebar-section:not(.filter-hit) { display: none; }
-  .sidebar-section.no-anim .sidebar-section-body,
-  .module.no-anim .lessons { transition: none; }
 
   /* Module (Bab) — nested inside section.open */
   .module {
@@ -4911,7 +4909,7 @@
 <link rel="stylesheet" href="styles/n5-learning-copy.css?v=20261013-1"/>
 <link rel="stylesheet" href="styles/vocabulary-verb-forms.css?v=20261014-2"/>
 <link rel="stylesheet" href="styles/vocabulary-groups.css?v=20261014-2"/>
-<link rel="stylesheet" href="styles/learning-placement.css?v=20260928-skeleton"/>
+<link rel="stylesheet" href="styles/learning-placement.css?v=20261016-sidebar"/>
 <link rel="stylesheet" href="final-exam.css?v=20261003-4"/>
 <link rel="stylesheet" href="styles/learning-state.css?v=20260911-1"/>
 <link rel="stylesheet" href="styles/skeleton.css?v=1">
@@ -7171,6 +7169,7 @@ window.continueAfterQuiz = () => {
     step.module.id === mId && step.lesson.id === lId);
   const next = steps[idx + 1];
   if (next) {
+    if (next.module.id !== currentState.moduleId) expandSidebarTo(next.module.id);
     currentState.moduleId = next.module.id;
     currentState.lessonId = next.lesson.id;
     currentState.view = next.kind;
@@ -14832,10 +14831,9 @@ function _sidebarAnchor(kind, key) {
 // mengganti seluruh innerHTML, sehingga elemen baru langsung lahir dalam
 // keadaan akhir dan animasi tinggi di CSS tidak pernah terlihat. Di sini hanya
 // class + aria-expanded yang disinkronkan dari _expandedSections/_expandedModules.
-function syncSidebarExpansion({ instantClose = [] } = {}) {
+function syncSidebarExpansion() {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
-  const instant = new Set(instantClose);
   sidebar.querySelectorAll('.sidebar-section').forEach((el) => {
     const open = _expandedSections.has(el.dataset.section);
     el.classList.toggle('open', open);
@@ -14843,34 +14841,20 @@ function syncSidebarExpansion({ instantClose = [] } = {}) {
   });
   sidebar.querySelectorAll('.module').forEach((el) => {
     const open = _expandedModules.has(el.dataset.module);
-    if (!open && el.classList.contains('open') && instant.has(el.dataset.module)) el.classList.add('no-anim');
     el.classList.toggle('open', open);
     el.querySelector('.module-header')?.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
-  const pending = sidebar.querySelectorAll('.no-anim');
-  if (pending.length) {
-    void sidebar.offsetHeight;
-    window.requestAnimationFrame(() => pending.forEach((el) => el.classList.remove('no-anim')));
-  }
 }
 
+// Bab TIDAK saling menutup (sama seperti Bagian). Dulu membuka satu Bab
+// menutup Bab lain di Bagian yang sama; Bab yang tertutup di atas harus
+// lenyap seketika supaya header yang diketuk tidak bergeser, dan di HP
+// lompatan itu yang terlihat, bukan animasi Bab yang baru dibuka.
 window.toggleModule = (moduleId) => {
   const reanchor = _sidebarAnchor('module', moduleId);
-  // Mutex within the parent section: opening one module collapses the others
-  // in the same section. Toggle the current one if already open.
-  const sec = _sectionOfModule(moduleId);
-  const wasOpen = _expandedModules.has(moduleId);
-  const closing = [];
-  for (const otherId of [..._expandedModules]) {
-    if (_sectionOfModule(otherId) === sec) { _expandedModules.delete(otherId); closing.push(otherId); }
-  }
-  if (!wasOpen) _expandedModules.add(moduleId);
-  // Bab lain yang tertutup DI ATAS header yang diklik menutup seketika
-  // (tanpa animasi) lalu reanchor() menahan header di tempatnya; kalau ikut
-  // beranimasi, header yang baru diklik akan merayap naik di bawah jari.
-  const order = [...document.querySelectorAll('#sidebar .module')].map((el) => el.dataset.module);
-  const clickedAt = order.indexOf(moduleId);
-  syncSidebarExpansion({ instantClose: closing.filter((id) => id !== moduleId && order.indexOf(id) < clickedAt) });
+  if (_expandedModules.has(moduleId)) _expandedModules.delete(moduleId);
+  else _expandedModules.add(moduleId);
+  syncSidebarExpansion();
   reanchor();
 };
 

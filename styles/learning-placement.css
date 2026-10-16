@@ -753,10 +753,12 @@ body > footer :is(a, button, input, select, textarea, summary, [role="button"], 
   transition-timing-function: var(--ease-standard);
 }
 
+/* .lessons (isi Bab) sengaja tidak di sini: animasinya mengikuti isi
+   Bagian di welcome.html (0,28 dtk + visibility tertunda saat menutup);
+   transition-delay: 0ms di bawah memotong penundaan visibility itu. */
 #app-root :is(
   .sidebar,
-  .course-picker-list,
-  .lessons
+  .course-picker-list
 ),
 .sidebar-backdrop,
 body > .xp-toast {

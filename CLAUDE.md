@@ -171,6 +171,14 @@
   (CPU 4x) turun dari 4–5 ke 1. (6) Label `grammar_task` di sidebar "Tata Bahasa" → "Latihan"; judul N5
   Percakapan/Latihan membuang awalan "Tata Bahasa Bab N:" sumbernya (`n5-learning-copy.js`). (7) Kotak cari
   40px. **Belum diverifikasi**: Safari/iOS dan data produksi (diuji dengan fixture N5 tiruan).
+  **Susulan (user, Android Chrome: "Saat buka bab gk ada animasinya, hanya saat buka section")**: tidak
+  terulang di emulasi (Bab beranimasi bahkan di CPU 6x), tapi user mengonfirmasi ada Bab lain terbuka di
+  atasnya — mutex Bab menutup Bab di atas SEKETIKA (`.no-anim`, supaya header yang diketuk diam), dan di HP
+  lompatan itulah yang terlihat. Karena itu **Bab TIDAK lagi mutex** (sama seperti Bagian); `.no-anim`
+  dihapus. Navigasi ke pelajaran (`expandSidebarTo`) tetap merapikan: hanya Bab tujuan yang terbuka. Durasi
+  Bab = Bagian (0,28 dtk): `.lessons` DIKELUARKAN dari daftar override `--duration-base` (200 ms +
+  `transition-delay:0`) di `styles/learning-placement.css`. `continueAfterQuiz` (Lanjut setelah Tes Bab)
+  ikut `expandSidebarTo` saat pindah Bab — bug yang sama dengan temuan Codex di #468.
 
 - **Ringkasan modul (`renderModuleIntro` di welcome.html) didesain ulang** — user: "buat bagian
   ringkasan modul memiliki ui/ux yang menarik, informatif", disetujui lewat mockup. Urutan: header
