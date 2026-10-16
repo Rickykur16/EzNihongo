@@ -94,7 +94,10 @@
         lessons: (module.lessons || []).map(lesson => {
           let displayTitle = title(lesson.title);
           const sourceId = lesson.type === 'conversation' ? lesson.conversation_source_lesson_id : lesson.popup_after_lesson_id;
-          const sourceTitle = sourceTitles.get(sourceId);
+          // "Tata Bahasa Bab 13: X" → "X": judul turunan sudah berada di bawah
+          // Bab-nya, jadi awalan itu hanya membuat judul sidebar dua baris.
+          const rawSource = sourceTitles.get(sourceId);
+          const sourceTitle = rawSource && (rawSource.replace(/^Tata\s+Bahasa(?:\s+Bab\s*\d+)?\s*[:：]\s*/i, '').trim() || rawSource);
           if (lesson.type === 'conversation') displayTitle = sourceTitle ? `Percakapan: ${sourceTitle}` : displayTitle;
           if (lesson.type === 'grammar_task') displayTitle = sourceTitle ? `Latihan: ${sourceTitle}` : displayTitle.replace(/^Tugas Bunpou/, 'Latihan Tata Bahasa');
           if (lesson.type === 'quiz') displayTitle = final ? 'Ujian Akhir N5' : displayTitle.replace(/^Assignment Bab/, 'Tes Bab').replace(/^Kuis\s*[—-]/, 'Kuis Latihan:');

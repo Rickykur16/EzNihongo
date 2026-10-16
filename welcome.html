@@ -551,8 +551,9 @@
   }
   .module-filter input {
     width: 100%;
+    min-height: 40px;
     padding: 8px 12px 8px 32px;
-    font-size: 12.5px;
+    font-size: 13px;
     font-family: inherit;
     color: #1a1e26;
     background: #fbfaf7;
@@ -602,8 +603,22 @@
   .ss-meta { font-size: 12px; color: #6a6a6a; font-weight: 400; font-variant-numeric: tabular-nums; }
   .ss-caret { color: #6a6a6a; transition: transform .15s; flex-shrink: 0; margin-top: 4px; }
   .sidebar-section.open .ss-caret { transform: rotate(180deg); }
-  .sidebar-section-body { display: none; background: #fff; }
-  .sidebar-section.open .sidebar-section-body { display: block; }
+  /* Bagian dan Bab membuka/menutup dengan animasi tinggi yang sama
+     (grid-template-rows 0fr → 1fr). visibility ikut ditunda sampai animasi
+     tutup selesai supaya isi yang tertutup tidak bisa dicapai dengan Tab. */
+  .sidebar-section-body {
+    display: grid; grid-template-rows: 0fr; background: #fff;
+    visibility: hidden;
+    transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.28s;
+  }
+  .sidebar-section-body > .ss-body-inner { min-height: 0; overflow: hidden; }
+  .sidebar-section.open .sidebar-section-body,
+  .modules-list.filtering .sidebar-section.filter-hit .sidebar-section-body {
+    grid-template-rows: 1fr; visibility: visible; transition-delay: 0s;
+  }
+  .modules-list.filtering .sidebar-section:not(.filter-hit) { display: none; }
+  .sidebar-section.no-anim .sidebar-section-body,
+  .module.no-anim .lessons { transition: none; }
 
   /* Module (Bab) — nested inside section.open */
   .module {
@@ -612,7 +627,8 @@
     border-radius: 0;
     margin: 0;
   }
-  .sidebar-section-body > .module:first-child { border-top: none; }
+  .sidebar-section-body > .module:first-child,
+  .ss-body-inner > .module:first-child { border-top: none; }
   .module.open { background: var(--paper-cream, #fbf6f1); }
   .module-header {
     width: 100%; padding: 12px 16px 12px 28px;
@@ -633,12 +649,19 @@
   .lessons {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    visibility: hidden;
+    transition: grid-template-rows 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.28s;
   }
   .lessons > .lessons-inner {
     list-style: none; margin: 0; padding: 0; min-height: 0; overflow: hidden;
   }
-  .module.open .lessons { grid-template-rows: 1fr; }
+  .sidebar-section.open .module.open .lessons,
+  .modules-list.filtering .sidebar-section.filter-hit .module.open .lessons,
+  .modules-list.filtering .module.filter-lessons .lessons {
+    grid-template-rows: 1fr; visibility: visible; transition-delay: 0s;
+  }
+  .modules-list.filtering .module:not(.filter-hit) { display: none; }
+  .modules-list.filtering .module.filter-lessons .lesson-item:not(.filter-hit) { display: none; }
 
   /* Lesson item — Udemy row */
   .lesson-item {
@@ -2230,6 +2253,12 @@
         opacity 0.2s ease,
         border-color 0.2s ease;
     }
+    /* Isi sidebar memegang lebar penuhnya selama animasi tutup/buka: tanpa
+       ini ratusan judul pelajaran dibungkus ulang di setiap frame saat lebar
+       sidebar menyusut, dan itu yang membuat animasinya tersendat. */
+    .sidebar { overflow-x: hidden; }
+    .sidebar > .course-picker { min-width: 296px; }
+    .sidebar > .sidebar-scroll { min-width: 340px; }
     .sidebar::-webkit-scrollbar { width: 4px; }
     .sidebar::-webkit-scrollbar-thumb { background: #dedad4; border-radius: 4px; }
 
@@ -4924,7 +4953,7 @@
   ✓ Pembayaran berhasil! Selamat datang di <strong id="new-course-name"></strong>. Mulai belajar di bawah.
 </div>
 
-<div id="app-root"><!-- Loading skeleton: the learning layout (sidebar, greeting, lesson header) with placeholder text, shown from the first paint. It carries no ids on purpose: renderLearning() replaces it and code looking up #sidebar/#main-content must not find it. renderBootSkeleton() reuses it and fills in the real greeting, which needs no request. --><p class="sk-sr">Memuat materi…</p><div class="learning-layout" data-boot-skeleton aria-hidden="true"><aside class="sidebar is-skeleton"><div class="course-picker"><button class="course-picker-bar" type="button" tabindex="-1"><span class="course-picker-level sk-box">N5</span><span class="course-picker-name"><span class="sk-t">Bahasa Jepang N5</span></span><span class="course-picker-caret">▼</span></button></div><div class="sidebar-scroll"><div class="sidebar-header"><div class="sidebar-header-top"><span class="sidebar-course-badge sk-box">N5</span><h3><span class="sk-t">Progress Kelas</span></h3></div><div class="progress-card"><div class="progress-row"><span class="progress-pct"><span class="sk-t">00%</span></span><span class="progress-sub"><span class="sk-t">0 dari 00 materi</span></span></div><div class="progress-bar"></div></div></div><div class="module-filter"><input class="sk-box" type="search" tabindex="-1" disabled aria-hidden="true"></div><div class="modules-list"><div class="sidebar-section open current"><div class="sidebar-section-header"><div class="ss-info"><span class="ss-name"><span class="sk-t">Dasar bahasa Jepang</span></span><span class="ss-meta"><span class="sk-t">0 / 0</span></span></div></div><div class="sidebar-section-body"><div class="module open current"><div class="module-header"><div class="m-info"><span class="m-name"><span class="sk-t">Bab 1: Perkenalan</span></span><span class="m-meta"><span class="sk-t">0 / 0</span></span></div></div><div class="lessons"><ul class="lessons-inner"><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">Ringkasan modul</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Tujuan belajar</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">1. Pengantar</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Video</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">2. Kosakata 語彙</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Kosakata</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">3. Kanji 漢字</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Kanji</span></span></div></div></li></ul></div></div></div></div></div></div></aside><div class="learning-workspace"><div class="learning-overview is-skeleton"><div class="greeting-banner"><div><h1 class="greeting-jp"><span class="sk-t">こんにちは、Siswa</span><span class="san"><span class="sk-t">さん</span></span></h1><p class="greeting-id"><span class="sk-t">Selamat datang — Mari lanjutkan belajar bahasa Jepang.</span></p></div><div class="greeting-time"><div class="gt-kanji"><span class="sk-t">昼</span></div><div class="gt-label"><span class="sk-t">SIANG</span></div><div class="gt-clock"><span class="sk-t">00:00</span></div></div></div></div><main class="main-content is-skeleton"><p class="lesson-breadcrumb sk-box">Bahasa Jepang N5 · Modul 01 · MATERI</p><h1 class="lesson-title"><span class="sk-t">Judul pelajaran</span></h1><p class="lesson-subtitle"><span class="sk-t">Bab 1: Perkenalan — 10 min</span></p><div class="lesson-body"><h2><span class="sk-t">Catatan Pelajaran</span></h2><p><span class="sk-t">Materi pelajaran sedang dimuat. Isi lengkapnya akan muncul di sini sebentar lagi.</span></p><p><span class="sk-t">Video, kosakata, dan latihan tersedia saat belajar.</span></p></div></main></div></div></div>
+<div id="app-root"><!-- Loading skeleton: the learning layout (sidebar, greeting, lesson header) with placeholder text, shown from the first paint. It carries no ids on purpose: renderLearning() replaces it and code looking up #sidebar/#main-content must not find it. renderBootSkeleton() reuses it and fills in the real greeting, which needs no request. --><p class="sk-sr">Memuat materi…</p><div class="learning-layout" data-boot-skeleton aria-hidden="true"><aside class="sidebar is-skeleton"><div class="course-picker"><button class="course-picker-bar" type="button" tabindex="-1"><span class="course-picker-level sk-box">N5</span><span class="course-picker-name"><span class="sk-t">Bahasa Jepang N5</span></span><span class="course-picker-caret">▼</span></button></div><div class="sidebar-scroll"><div class="sidebar-header"><div class="sidebar-header-top"><span class="sidebar-course-badge sk-box">N5</span><h3><span class="sk-t">Progress Kelas</span></h3></div><div class="progress-card"><div class="progress-row"><span class="progress-pct"><span class="sk-t">00%</span></span><span class="progress-sub"><span class="sk-t">0 dari 00 materi</span></span></div><div class="progress-bar"></div></div></div><div class="module-filter"><input class="sk-box" type="search" tabindex="-1" disabled aria-hidden="true"></div><div class="modules-list"><div class="sidebar-section open current"><div class="sidebar-section-header"><div class="ss-info"><span class="ss-name"><span class="sk-t">Dasar bahasa Jepang</span></span><span class="ss-meta"><span class="sk-t">0 / 0</span></span></div></div><div class="sidebar-section-body"><div class="ss-body-inner"><div class="module open current"><div class="module-header"><div class="m-info"><span class="m-name"><span class="sk-t">Bab 1: Perkenalan</span></span><span class="m-meta"><span class="sk-t">0 / 0</span></span></div></div><div class="lessons"><ul class="lessons-inner"><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">Ringkasan modul</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Tujuan belajar</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">1. Pengantar</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Video</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">2. Kosakata 語彙</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Kosakata</span></span></div></div></li><li class="lesson-item"><span class="lesson-check" aria-hidden="true"></span><div class="lesson-info"><div class="lesson-title-text"><span class="sk-t">3. Kanji 漢字</span></div><div class="lesson-meta-row"><span class="lesson-type-badge"><span class="sk-t">Kanji</span></span></div></div></li></ul></div></div></div></div></div></div></div></aside><div class="learning-workspace"><div class="learning-overview is-skeleton"><div class="greeting-banner"><div><h1 class="greeting-jp"><span class="sk-t">こんにちは、Siswa</span><span class="san"><span class="sk-t">さん</span></span></h1><p class="greeting-id"><span class="sk-t">Selamat datang — Mari lanjutkan belajar bahasa Jepang.</span></p></div><div class="greeting-time"><div class="gt-kanji"><span class="sk-t">昼</span></div><div class="gt-label"><span class="sk-t">SIANG</span></div><div class="gt-clock"><span class="sk-t">00:00</span></div></div></div></div><main class="main-content is-skeleton"><p class="lesson-breadcrumb sk-box">Bahasa Jepang N5 · Modul 01 · MATERI</p><h1 class="lesson-title"><span class="sk-t">Judul pelajaran</span></h1><p class="lesson-subtitle"><span class="sk-t">Bab 1: Perkenalan — 10 min</span></p><div class="lesson-body"><h2><span class="sk-t">Catatan Pelajaran</span></h2><p><span class="sk-t">Materi pelajaran sedang dimuat. Isi lengkapnya akan muncul di sini sebentar lagi.</span></p><p><span class="sk-t">Video, kosakata, dan latihan tersedia saat belajar.</span></p></div></main></div></div></div>
 <script>
 // ═══════════════════════════════════════════════
 // TIME-BASED GREETING
@@ -4996,7 +5025,7 @@ function getUserName(user = session) {
 <script src="src/bunny-video.js?v=20261008-1"></script>
 <script src="src/bunny-player.js?v=20261008-1"></script>
 <script src="final-exam.js?v=20261003-4"></script>
-<script src="src/n5-learning-copy.js?v=20261014-chapter-order"></script>
+<script src="src/n5-learning-copy.js?v=20261016-sidebar"></script>
 <script src="src/vocabulary-verb-display.js?v=20261014-1"></script>
 <script src="src/vocabulary-groups.js?v=20261014-1"></script>
 <script>
@@ -7549,6 +7578,10 @@ function learningStateAttributes(value) {
   return state ? `data-learning-state="${state}" data-learning-evidence="authoritative"` : '';
 }
 
+// Kata kunci pencarian sidebar (bertahan saat render ulang) dan pelajaran
+// terakhir yang sudah digulirkan ke dalam pandangan.
+let _sidebarFilter = '';
+let _sidebarRevealedKey = null;
 function renderSidebar() {
   const course = COURSE_CONTENT[currentState.course];
   const progress = getProgress()[currentState.course] || {};
@@ -7589,7 +7622,7 @@ function renderSidebar() {
   const doneLessons = curriculumLessons.filter(({ module, lesson }) => progress[`${module.id}:${lesson.id}`] === true).length;
   const pct = totalLessons ? Math.round((doneLessons / totalLessons) * 100) : 0;
 
-  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji', kana: 'Kana', grammar_task: 'Tata Bahasa', conversation: 'Percakapan' };
+  const TYPE_LABEL = { video: 'Video', quiz: 'Kuis', text: 'Bacaan', deck: 'Kosakata', kanji: 'Kanji', kana: 'Kana', grammar_task: 'Latihan', conversation: 'Percakapan' };
   // SVG icons compact-style ala Udemy (play / question / book / cards / kanji).
   const TYPE_ICON = {
     video: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
@@ -7730,9 +7763,9 @@ function renderSidebar() {
           </div>
           <svg class="ss-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <div class="sidebar-section-body">
+        <div class="sidebar-section-body"><div class="ss-body-inner">
           ${b.modules.map(renderModuleHtml).join('')}
-        </div>
+        </div></div>
       </div>
     `;
   }).join('');
@@ -7809,10 +7842,10 @@ function renderSidebar() {
       </div>
       <div class="module-filter">
         <svg class="mf-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="search" id="module-filter-input" placeholder="Cari modul..." oninput="filterModules(this.value)" autocomplete="off" />
+        <input type="search" id="module-filter-input" placeholder="Cari bab atau pelajaran..." aria-label="Cari bab atau pelajaran" aria-controls="modules-list" value="${escapeHtml(_sidebarFilter)}" oninput="filterModules(this.value)" autocomplete="off" />
       </div>
-      <div class="modules-list">${modulesHtml}</div>
-      <div class="modules-empty" id="modules-empty" style="display:none;">Tidak ada modul yang cocok.</div>
+      <div class="modules-list" id="modules-list">${modulesHtml}</div>
+      <div class="modules-empty" id="modules-empty" role="status" style="display:none;">Tidak ada bab atau pelajaran yang cocok.</div>
       <div class="sidebar-quicklinks">
         <button class="quicklink" type="button" onclick="location.href='review.html?v=20260902-4'">
           <span class="ql-ico">🔁</span>
@@ -7852,7 +7885,15 @@ function renderSidebar() {
   `;
 
   const newScroll = document.querySelector('.sidebar-scroll');
+  if (_sidebarFilter) window.filterModules(_sidebarFilter);
   if (newScroll && savedScrollTop) newScroll.scrollTop = savedScrollTop;
+  // Pelajaran yang baru dibuka (saat halaman dimuat atau lewat tombol
+  // Lanjut) harus terlihat di daftar tanpa siswa menggulir mencarinya.
+  const currentKey = `${currentState.course}:${currentState.moduleId}:${currentState.view}:${currentState.lessonId}`;
+  if (currentKey !== _sidebarRevealedKey) {
+    _sidebarRevealedKey = currentKey;
+    revealCurrentLessonInSidebar();
+  }
   if (restoreDrawerCloseFocus) {
     window.requestAnimationFrame(() => {
       if (sidebar?.classList.contains('mobile-open')) sidebar.querySelector('.sidebar-close')?.focus();
@@ -7864,15 +7905,37 @@ window.toggleCoursePicker = () => {
   document.getElementById('course-picker')?.classList.toggle('open');
 };
 
+// Pencarian sidebar mencocokkan nama Bab DAN judul pelajaran. Selama ada
+// kata kunci, Bagian/Bab yang memuat hasil ditampilkan terbuka (lewat class
+// filter-*, bukan state buka/tutup siswa), jadi Bab di Bagian yang sedang
+// tertutup tetap ditemukan dan menghapus kata kunci mengembalikan tampilan
+// semula. Kata kunci disimpan supaya bertahan saat sidebar dirender ulang.
 window.filterModules = (value) => {
-  const q = String(value || '').trim().toLowerCase();
-  const modules = document.querySelectorAll('#sidebar .modules-list .module');
+  _sidebarFilter = String(value || '');
+  const q = _sidebarFilter.trim().toLowerCase();
+  const list = document.querySelector('#sidebar .modules-list');
+  if (!list) return;
+  list.classList.toggle('filtering', !!q);
   let visible = 0;
-  modules.forEach((el) => {
-    const header = el.querySelector('.module-header')?.textContent?.toLowerCase() || '';
-    const show = !q || header.includes(q);
-    el.style.display = show ? '' : 'none';
-    if (show) visible++;
+  list.querySelectorAll('.sidebar-section').forEach((section) => {
+    let sectionHit = false;
+    section.querySelectorAll('.module').forEach((mod) => {
+      const header = mod.querySelector('.m-name')?.textContent?.toLowerCase() || '';
+      const headerHit = !!q && header.includes(q);
+      let lessonHits = 0;
+      mod.querySelectorAll('.lesson-item:not(.module-summary-item)').forEach((item) => {
+        const hit = !!q && !headerHit
+          && (item.querySelector('.lesson-title-text')?.textContent?.toLowerCase() || '').includes(q);
+        item.classList.toggle('filter-hit', hit);
+        if (hit) lessonHits++;
+      });
+      const hit = headerHit || lessonHits > 0;
+      mod.classList.toggle('filter-hit', hit);
+      // Cocok di judul pelajaran → tampilkan hanya pelajaran yang cocok.
+      mod.classList.toggle('filter-lessons', !headerHit && lessonHits > 0);
+      if (hit) { sectionHit = true; visible++; }
+    });
+    section.classList.toggle('filter-hit', sectionHit);
   });
   const empty = document.getElementById('modules-empty');
   if (empty) empty.style.display = (q && visible === 0) ? '' : 'none';
@@ -14422,17 +14485,7 @@ function selectLearningView(moduleId, lessonId, view) {
     clearTimeout(_kanjiStrokeTimer); _kanjiStrokeTimer = null;
   }
 
-  // Picking a lesson auto-opens its section + module; close sibling modules
-  // in the same section (module-level mutex). Other sections stay closed.
-  const sec = _sectionOfModule(moduleId);
-  _expandedSections.clear();
-  _expandedSections.add(sec);
-  for (const otherId of [..._expandedModules]) {
-    if (otherId !== moduleId && _sectionOfModule(otherId) === sec) {
-      _expandedModules.delete(otherId);
-    }
-  }
-  _expandedModules.add(moduleId);
+  expandSidebarTo(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = lessonId;
   currentState.view = view;
@@ -14442,6 +14495,19 @@ function selectLearningView(moduleId, lessonId, view) {
   window.scrollTo({ top: 0, behavior: 'auto' });
   completeMobileContentFocus();
 }
+// Membuka sebuah pelajaran membuka Bagian + Bab-nya dan menutup yang lain.
+// Bab di Bagian lain ikut dihapus dari state: kalau tertinggal, daftar
+// pelajarannya tetap "terbuka" di dalam Bagian yang tertutup.
+function expandSidebarTo(moduleId) {
+  const sec = _sectionOfModule(moduleId);
+  _expandedSections.clear();
+  _expandedSections.add(sec);
+  for (const otherId of [..._expandedModules]) {
+    if (otherId !== moduleId) _expandedModules.delete(otherId);
+  }
+  _expandedModules.add(moduleId);
+}
+
 window.selectLesson = (moduleId, lessonId) => selectLearningView(moduleId, lessonId, 'lesson');
 // Old callers pass the grammar lesson; its Percakapan lesson opens instead.
 window.selectConversation = (moduleId, lessonId) => {
@@ -14457,13 +14523,7 @@ window.selectModuleIntro = (moduleId) => {
   try { destroyAllListeningPlayers(); } catch {}
   try { window.closeKanjiDetail?.(); } catch {}
   try { window.closeKanaModal?.(); } catch {}
-  const sec = _sectionOfModule(moduleId);
-  _expandedSections.clear();
-  _expandedSections.add(sec);
-  for (const otherId of [..._expandedModules]) {
-    if (otherId !== moduleId && _sectionOfModule(otherId) === sec) _expandedModules.delete(otherId);
-  }
-  _expandedModules.add(moduleId);
+  expandSidebarTo(moduleId);
   currentState.moduleId = moduleId;
   currentState.lessonId = null;
   currentState.view = 'intro';
@@ -14617,6 +14677,7 @@ function setMobileSidebarOpen(open, { restoreFocus = false, moveFocus = false } 
     document.body.style.overflow = 'hidden';
     setMobileSidebarBackgroundInert(true);
     updateMobileSidebarToggle(true);
+    if (!wasOpen) revealCurrentLessonInSidebar();
     if (moveFocus) {
       const focusCloseButton = () => {
         if (sb.classList.contains('mobile-open')) sb.querySelector('.sidebar-close')?.focus({ preventScroll: true });
@@ -14767,37 +14828,86 @@ function _sidebarAnchor(kind, key) {
   };
 }
 
+// Buka/tutup Bab dan Bagian TIDAK merender ulang sidebar: renderSidebar()
+// mengganti seluruh innerHTML, sehingga elemen baru langsung lahir dalam
+// keadaan akhir dan animasi tinggi di CSS tidak pernah terlihat. Di sini hanya
+// class + aria-expanded yang disinkronkan dari _expandedSections/_expandedModules.
+function syncSidebarExpansion({ instantClose = [] } = {}) {
+  const sidebar = document.getElementById('sidebar');
+  if (!sidebar) return;
+  const instant = new Set(instantClose);
+  sidebar.querySelectorAll('.sidebar-section').forEach((el) => {
+    const open = _expandedSections.has(el.dataset.section);
+    el.classList.toggle('open', open);
+    el.querySelector('.sidebar-section-header')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  sidebar.querySelectorAll('.module').forEach((el) => {
+    const open = _expandedModules.has(el.dataset.module);
+    if (!open && el.classList.contains('open') && instant.has(el.dataset.module)) el.classList.add('no-anim');
+    el.classList.toggle('open', open);
+    el.querySelector('.module-header')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  const pending = sidebar.querySelectorAll('.no-anim');
+  if (pending.length) {
+    void sidebar.offsetHeight;
+    window.requestAnimationFrame(() => pending.forEach((el) => el.classList.remove('no-anim')));
+  }
+}
+
 window.toggleModule = (moduleId) => {
   const reanchor = _sidebarAnchor('module', moduleId);
   // Mutex within the parent section: opening one module collapses the others
   // in the same section. Toggle the current one if already open.
   const sec = _sectionOfModule(moduleId);
   const wasOpen = _expandedModules.has(moduleId);
+  const closing = [];
   for (const otherId of [..._expandedModules]) {
-    if (_sectionOfModule(otherId) === sec) _expandedModules.delete(otherId);
+    if (_sectionOfModule(otherId) === sec) { _expandedModules.delete(otherId); closing.push(otherId); }
   }
   if (!wasOpen) _expandedModules.add(moduleId);
-  renderSidebar();
+  // Bab lain yang tertutup DI ATAS header yang diklik menutup seketika
+  // (tanpa animasi) lalu reanchor() menahan header di tempatnya; kalau ikut
+  // beranimasi, header yang baru diklik akan merayap naik di bawah jari.
+  const order = [...document.querySelectorAll('#sidebar .module')].map((el) => el.dataset.module);
+  const clickedAt = order.indexOf(moduleId);
+  syncSidebarExpansion({ instantClose: closing.filter((id) => id !== moduleId && order.indexOf(id) < clickedAt) });
   reanchor();
 };
 
 window.toggleSidebarSection = (name) => {
   const reanchor = _sidebarAnchor('section', name);
-  // Mutex at section level: opening one closes others (and resets their
-  // open modules). Clicking the already-open section collapses it.
-  const wasOpen = _expandedSections.has(name);
-  _expandedSections.clear();
-  // Collapsing a section also collapses its open module, to avoid leaving
-  // stale state when the user re-opens it later.
-  for (const otherId of [..._expandedModules]) {
-    if (_sectionOfModule(otherId) !== name || wasOpen) {
-      _expandedModules.delete(otherId);
+  // Bagian bisa terbuka bersamaan: membuka Bagian lain untuk melihat-lihat
+  // tidak boleh menyembunyikan Bab yang sedang dipelajari. Menutup sebuah
+  // Bagian ikut menutup Bab di dalamnya supaya tidak ada state basi.
+  if (_expandedSections.has(name)) {
+    _expandedSections.delete(name);
+    for (const otherId of [..._expandedModules]) {
+      if (_sectionOfModule(otherId) === name) _expandedModules.delete(otherId);
     }
+  } else {
+    _expandedSections.add(name);
   }
-  if (!wasOpen) _expandedSections.add(name);
-  renderSidebar();
+  syncSidebarExpansion();
   reanchor();
 };
+
+// Gulir daftar sidebar ke pelajaran yang sedang dibuka bila letaknya di luar
+// area terlihat. Dipanggil saat pelajaran berganti dan saat laci HP dibuka.
+function revealCurrentLessonInSidebar() {
+  const scroller = document.querySelector('#sidebar .sidebar-scroll');
+  // Hanya baris yang benar-benar terlihat: elemen di dalam Bab/Bagian yang
+  // tertutup tetap punya kotak di DOM, jadi getClientRects() tidak cukup.
+  const shown = (el) => el && el.getClientRects().length
+    && getComputedStyle(el).visibility === 'visible';
+  const lesson = scroller?.querySelector('.lesson-item.current');
+  const header = scroller?.querySelector('.module.current .module-header');
+  const current = shown(lesson) ? lesson : (shown(header) ? header : null);
+  if (!scroller || !current) return;
+  const box = scroller.getBoundingClientRect();
+  const r = current.getBoundingClientRect();
+  if (r.top >= box.top + 8 && r.bottom <= box.bottom - 8) return;
+  scroller.scrollTop += (r.top - box.top) - (box.height - r.height) / 2;
+}
 
 window.markCompleteAndNext = async (triggerButton) => {
   if (triggerButton?.disabled) return;
@@ -14840,6 +14950,7 @@ window.markCompleteAndNext = async (triggerButton) => {
   const advance = () => {
     if (!stillHere()) return;
     if (next) {
+      if (next.module.id !== currentState.moduleId) expandSidebarTo(next.module.id);
       currentState.moduleId = next.module.id;
       currentState.lessonId = next.lesson.id;
       currentState.view = next.kind;

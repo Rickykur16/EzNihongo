@@ -127,3 +127,19 @@ test('N5 test preview displays actual counts, passing rules and wait time in Ind
   assert.doesNotMatch(container.innerHTML,/Pool soal|Per attempt|Cooldown|Mulai assessment|12h/);
   assert.equal(status.passingScorePct,75);assert.equal(status.questionsPerAttempt,24);
 });
+
+test('Percakapan and Latihan titles drop the "Tata Bahasa Bab N:" prefix of their source', () => {
+  const ctx = setup();
+  const out = ctx.EzN5Copy.prepareCourse({ slug:'n5', modules:[{ id:'m13', slug:'n5-b13', title:'BAB 13 : Bentuk Biasa', lessons:[
+    { id:'src', type:'video', title:'Tata Bahasa Bab 13: Bentuk Plain (V-kamus・〜た)' },
+    { id:'conv', type:'conversation', title:'Percakapan: lama', conversation_source_lesson_id:'src' },
+    { id:'task', type:'grammar_task', title:'Tugas Bunpou Bab 13: Bentuk Biasa', popup_after_lesson_id:'src' },
+    { id:'src2', type:'video', title:'Tata Bahasa: Kalimat Identitas' },
+    { id:'conv2', type:'conversation', title:'Percakapan: lama', conversation_source_lesson_id:'src2' },
+  ] }] });
+  const titles = out.modules[0].lessons.map(l => l.title);
+  assert.equal(titles[0], 'Tata Bahasa Bab 13: Bentuk Plain', 'the grammar lesson itself keeps its title');
+  assert.equal(titles[1], 'Percakapan: Bentuk Plain');
+  assert.equal(titles[2], 'Latihan: Bentuk Plain');
+  assert.equal(titles[4], 'Percakapan: Kalimat Identitas');
+});
