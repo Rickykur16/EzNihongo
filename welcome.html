@@ -14467,19 +14467,6 @@ function _sectionOfModule(moduleId) {
   return (mod && mod.sectionName && mod.sectionName.trim()) || 'Lainnya';
 }
 
-// Membuka sebuah pelajaran membuka Bagian + Bab-nya dan menutup yang lain.
-// Bab di Bagian lain ikut dihapus dari state: kalau tertinggal, daftar
-// pelajarannya tetap "terbuka" di dalam Bagian yang tertutup.
-function expandSidebarTo(moduleId) {
-  const sec = _sectionOfModule(moduleId);
-  _expandedSections.clear();
-  _expandedSections.add(sec);
-  for (const otherId of [..._expandedModules]) {
-    if (otherId !== moduleId) _expandedModules.delete(otherId);
-  }
-  _expandedModules.add(moduleId);
-}
-
 function selectLearningView(moduleId, lessonId, view) {
   const course = COURSE_CONTENT[currentState.course];
   const module = course?.modules?.find(item => item.id === moduleId);
@@ -14508,6 +14495,19 @@ function selectLearningView(moduleId, lessonId, view) {
   window.scrollTo({ top: 0, behavior: 'auto' });
   completeMobileContentFocus();
 }
+// Membuka sebuah pelajaran membuka Bagian + Bab-nya dan menutup yang lain.
+// Bab di Bagian lain ikut dihapus dari state: kalau tertinggal, daftar
+// pelajarannya tetap "terbuka" di dalam Bagian yang tertutup.
+function expandSidebarTo(moduleId) {
+  const sec = _sectionOfModule(moduleId);
+  _expandedSections.clear();
+  _expandedSections.add(sec);
+  for (const otherId of [..._expandedModules]) {
+    if (otherId !== moduleId) _expandedModules.delete(otherId);
+  }
+  _expandedModules.add(moduleId);
+}
+
 window.selectLesson = (moduleId, lessonId) => selectLearningView(moduleId, lessonId, 'lesson');
 // Old callers pass the grammar lesson; its Percakapan lesson opens instead.
 window.selectConversation = (moduleId, lessonId) => {
