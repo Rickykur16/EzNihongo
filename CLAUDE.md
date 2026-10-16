@@ -152,6 +152,26 @@
   jelas. Keputusan lebih tenang."), "Tiga hal yang perlu kamu ketahui", "bukan sekadar".
   Cek em dash pakai python (hitung '\u2014'); `grep "[—–]"` membaca per byte dan hasilnya palsu.
 
+- **Sidebar Belajar (`welcome.html`) diperbaiki UX-nya** (user, 16 Okt 2026: "liat animasi side barnya
+  terus fungsinya apakah mudah di pakai?" → "perbaiki agar ux nya lebih bagus"). Temuan terukur di
+  Chromium, semuanya diperbaiki: (1) animasi buka/tutup Bab TIDAK PERNAH jalan — `toggleModule`/
+  `toggleSidebarSection` memanggil `renderSidebar()` yang mengganti seluruh innerHTML, jadi elemen baru
+  lahir dalam keadaan akhir. Sekarang keduanya hanya menyinkronkan class lewat `syncSidebarExpansion()`
+  (JANGAN kembali ke renderSidebar di toggle). Bagian kini ikut beranimasi (body jadi grid 0fr→1fr dengan
+  pembungkus `.ss-body-inner`; kerangka boot ikut diberi pembungkus). Isi yang tertutup `visibility:hidden`
+  setelah animasi, jadi tidak bisa dicapai Tab. Bab di ATAS yang tertutup karena mutex menutup tanpa animasi
+  (`.no-anim`) supaya header yang diklik tidak merayap. (2) Pencarian dulu tidak menemukan Bab di Bagian yang
+  tertutup dan tidak menampilkan "tidak ditemukan"; sekarang mencocokkan nama Bab DAN judul pelajaran,
+  membuka Bagian/Bab hasilnya lewat class `filter-*` (bukan state siswa), kata kunci `_sidebarFilter`
+  bertahan saat render ulang. (3) Pelajaran aktif dulu di luar layar; `revealCurrentLessonInSidebar()`
+  dipanggil saat pelajaran berganti (`_sidebarRevealedKey`) dan saat laci HP dibuka. (4) Bagian TIDAK lagi
+  mutex (dipilih Claude sesuai usulan yang disampaikan; user tidak menjawab) — membuka Bagian lain tidak
+  menyembunyikan Bab yang sedang dipelajari; Bab tetap mutex per Bagian. (5) Tutup/buka sidebar desktop:
+  isi sidebar memegang lebar penuh (`min-width`) supaya judul tidak dibungkus ulang tiap frame — frame >33ms
+  (CPU 4x) turun dari 4–5 ke 1. (6) Label `grammar_task` di sidebar "Tata Bahasa" → "Latihan"; judul N5
+  Percakapan/Latihan membuang awalan "Tata Bahasa Bab N:" sumbernya (`n5-learning-copy.js`). (7) Kotak cari
+  40px. **Belum diverifikasi**: Safari/iOS dan data produksi (diuji dengan fixture N5 tiruan).
+
 - **Ringkasan modul (`renderModuleIntro` di welcome.html) didesain ulang** — user: "buat bagian
   ringkasan modul memiliki ui/ux yang menarik, informatif", disetujui lewat mockup. Urutan: header
   (chip level + CEFR, cincin progres), satu kartu navy "Lanjut dari sini" (fokus tunggal), "Yang kamu
