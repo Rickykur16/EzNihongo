@@ -147,7 +147,7 @@
     }
     profile = { fullName: signedInUser?.fullName || signedInUser?.full_name || '', email: signedInUser?.email || '', ...profile };
     let needsProfile = !profile.hasProfile || profile.needsUpdate === true;
-    lead.textContent = 'Daftar kelas lewat formulir di bawah ini. Kelas berbayar akan dibuatkan pesanan dan instruksi transfer; kelasmu aktif setelah pembayaran diverifikasi.';
+    lead.textContent = 'Pilih kelas dan cara belajar. Self Learning dibayar melalui Midtrans dan aktif otomatis setelah pembayaran berhasil. Pembayaran Bootcamp diverifikasi admin.';
     const single = courses.length === 1;
     slot.innerHTML = `<form id="reg-form" class="register-form">
       <fieldset class="c-profile-section reg-course"><legend>Pilih kelas</legend>

@@ -6,7 +6,10 @@ di `orders.learning_mode` dan `user_enrollments.learning_mode`:
 - `self_learning`: materi dan latihan mandiri.
 - `bootcamp`: materi dan latihan, ditambah live class dan rekamannya.
 
-Enrollment berbayar aktif setelah bukti pembayaran disetujui admin, dengan
+Self Learning baru memakai Midtrans (akun merchant khusus kursus). Bootcamp
+tetap memakai transfer manual. Enrollment Self Learning aktif otomatis setelah
+backend memverifikasi pembayaran melalui API Midtrans. Enrollment Bootcamp
+berbayar aktif setelah bukti pembayaran disetujui admin, dengan
 `expires_at = NOW() + INTERVAL '1 year'`. Enrollment gratis juga berlaku satu
 tahun sejak aktif. Status expired tetap dihitung dari waktu kedaluwarsa.
 
@@ -37,5 +40,6 @@ Pengujian:
 - `registration-crm.test.js` dengan database lokal untuk enrollment gratis,
   profil pendaftaran, dan transaksi checkout.
 
+Pengaturan akun Midtrans baru: lihat `backend/deploy/course-midtrans.md`.
 Migrasi berjalan lewat runner deploy yang sudah ada. Jangan menjalankan
 migrasi langsung ke database produksi untuk mencoba fitur ini.

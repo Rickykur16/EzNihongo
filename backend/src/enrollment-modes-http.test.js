@@ -30,7 +30,7 @@ async function query(sql, params = []) {
   if (sql.includes('INSERT INTO orders')) {
     inserted = params;
     return { rows: [{ id: 'order-1', order_number: params[0], course_id: courseId,
-      course_title_snapshot: params[3], amount_idr: params[4], learning_mode: params[5],
+      course_title_snapshot: params[3], amount_idr: params[4], learning_mode: params[5], payment_provider: params[6],
       status: 'pending_payment', expires_at: new Date(Date.now() + 86400000) }] };
   }
   if (sql.includes('FROM live_classes')) return { rows: [] };
@@ -61,10 +61,12 @@ test('checkout ignores client prices and snapshots the chosen program', async ()
   assert.equal(result.status, 201, JSON.stringify(result.data));
   assert.equal(result.data.order.amountIdr, 249000);
   assert.equal(result.data.order.learningMode, 'self_learning');
+  assert.equal(result.data.order.paymentProvider, 'midtrans');
   assert.match(result.data.order.courseTitle, /Self Learning/);
   assert.equal(inserted[5], 'self_learning');
   const bootcamp = await request('/orders', { courseSlug: 'n5', learningMode: 'bootcamp' });
   assert.equal(bootcamp.data.order.amountIdr, 799000);
+  assert.equal(bootcamp.data.order.paymentProvider, 'manual_transfer');
 });
 test('paid Self Learning cannot bypass payment through the free enrollment endpoint', async () => {
   course.is_free = true;

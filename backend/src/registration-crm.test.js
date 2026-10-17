@@ -41,7 +41,7 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     CREATE TABLE app_settings(key TEXT PRIMARY KEY,value TEXT);
     CREATE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=NOW(); RETURN NEW; END $$;`);
   const migrate = async (directory, file) => control.query(await readFile(new URL(`../${directory}/${file}`, import.meta.url), 'utf8'));
-  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql', '202_registration_other_details.sql', '203_registration_japanese_level.sql']) await migrate('migrations', file);
+  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql', '215_course_midtrans.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql', '202_registration_other_details.sql', '203_registration_japanese_level.sql']) await migrate('migrations', file);
   // Normal migrations must also work before optional CRM has been installed.
   await migrate('migrations', '201_registration_crm_sources.sql');
   for (const file of ['001_marketing_crm.sql', '002_marketing_strategy.sql']) await migrate('crm-migrations', file);

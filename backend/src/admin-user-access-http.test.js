@@ -54,7 +54,7 @@ test('admin access revocation through real HTTP and PostgreSQL', {
     CREATE TABLE user_progress(user_id UUID REFERENCES users(id),lesson_id UUID REFERENCES lessons(id),
       completed BOOLEAN,completed_at TIMESTAMPTZ,note TEXT,updated_at TIMESTAMPTZ DEFAULT NOW(),PRIMARY KEY(user_id,lesson_id));
   `);
-  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql']) {
+  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql', '215_course_midtrans.sql']) {
     await control.query(await readFile(new URL('../migrations/' + file, import.meta.url), 'utf8'));
   }
   await control.query(await readFile(new URL('../contracts/staff-schema-v1.sql', import.meta.url), 'utf8'));

@@ -9759,7 +9759,7 @@ window.openOrderDetail = async (orderId, reviewedPaymentId) => {
   try { d = await api('/admin/orders/' + orderId); }
   catch (err) { notify('Gagal load detail: ' + err.message, true); return; }
   const { order, payments } = d;
-  const pending = order.status === 'awaiting_review'
+  const pending = order.paymentProvider !== 'midtrans' && order.status === 'awaiting_review'
     ? payments.find((p) => p.status === 'pending' && (!reviewedPaymentId || p.id === reviewedPaymentId))
     : null;
   const rows = payments.map((p) => `
@@ -9778,7 +9778,7 @@ window.openOrderDetail = async (orderId, reviewedPaymentId) => {
         </div>` : ''}
       ${p.rejectionReason ? `<div style="font-size:12px;color:#b91c1c;margin-top:6px;">Alasan ditolak: ${escapeHtml(p.rejectionReason)}</div>` : ''}
       ${p.reviewedBy ? `<div style="font-size:11px;color:#a3a3a3;margin-top:4px;">Direview oleh ${escapeHtml(p.reviewedBy)} — ${new Date(p.reviewedAt).toLocaleString('id-ID')}</div>` : ''}
-    </div>`).join('') || '<div class="empty">Belum ada bukti transfer diajukan.</div>';
+    </div>`).join('') || (order.paymentProvider === 'midtrans' ? '<div class="empty">Pembayaran melalui Midtrans. Status dan akses diperbarui otomatis.</div>' : '<div class="empty">Belum ada bukti transfer diajukan.</div>');
 
   openModal(`
     <h3>Pesanan ${escapeHtml(order.orderNumber)}</h3>
@@ -9789,7 +9789,7 @@ window.openOrderDetail = async (orderId, reviewedPaymentId) => {
     <p style="font-size:12px;color:#737373;margin:0 0 14px;">
       Status: ${orderStatusBadge(order.status)} · Kadaluarsa: ${new Date(order.expiresAt).toLocaleString('id-ID')}
     </p>
-    <h4 style="margin:14px 0 6px;font-size:13px;">Riwayat bukti transfer</h4>
+    <h4 style="margin:14px 0 6px;font-size:13px;">${order.paymentProvider === 'midtrans' ? 'Riwayat pembayaran Midtrans' : 'Riwayat bukti transfer'}</h4>
     ${rows}
     ${reviewedPaymentId && !pending ? '<p>Bukti atau status pesanan sudah berubah. Tutup dan buka kembali detail untuk meninjau bukti terbaru.</p>' : ''}
     ${pending ? `

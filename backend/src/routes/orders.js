@@ -73,7 +73,7 @@ async function notifyAdminNewProof(order) {
 function notifyAdminNewOrder(order) {
   const amount = Number(order.amount_idr) || 0;
   return notifyAdmin([
-    '🛒 Pesanan baru (menunggu transfer)',
+    order.payment_provider === 'midtrans' ? '🛒 Pesanan Self Learning (Midtrans)' : '🛒 Pesanan baru (menunggu transfer)',
     `Pesanan: ${order.order_number}`,
     `Kursus: ${order.course_title_snapshot}`,
     `Nominal: Rp ${amount.toLocaleString('id-ID')}`,
@@ -89,6 +89,7 @@ function serializeOrder(order) {
     courseSlug: order.course_slug || null,
     courseTitle: order.course_title_snapshot,
     learningMode: order.learning_mode,
+    gatewayStatus: order.midtrans_status || null,
     amountIdr: order.amount_idr,
     currency: order.currency,
     paymentProvider: order.payment_provider,
@@ -195,10 +196,10 @@ router.post('/orders', asyncHandler(async (req, res) => {
       try {
         const ins = await runQuery(
           `INSERT INTO orders
-             (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at, learning_mode)
-           VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days', $6)
+             (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at, learning_mode, payment_provider)
+           VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days', $6, $7)
            RETURNING *`,
-          [generateOrderNumber(), req.user.id, course.id, `${course.title} (${offer.label})`, offer.priceIdr, offer.mode]
+          [generateOrderNumber(), req.user.id, course.id, `${course.title} (${offer.label})`, offer.priceIdr, offer.mode, offer.mode === 'self_learning' ? 'midtrans' : 'manual_transfer']
         );
         return { order: ins.rows[0], alreadyOpen: false };
       } catch (err) {
@@ -215,7 +216,7 @@ router.post('/orders', asyncHandler(async (req, res) => {
   const bankAccounts = await getBankAccounts();
   res.status(alreadyOpen ? 200 : 201).json({
     order: serializeOrder({ ...order, course_slug: course.slug }),
-    bankAccounts, alreadyOpen,
+    bankAccounts: order.payment_provider === 'midtrans' ? [] : bankAccounts, alreadyOpen,
   });
 }));
 
@@ -240,7 +241,7 @@ router.get('/orders/:id', asyncHandler(async (req, res) => {
     `SELECT * FROM order_payments WHERE order_id = $1 ORDER BY submitted_at DESC`,
     [order.id]
   );
-  const bankAccounts = ACTIONABLE_STATUSES.includes(effectiveStatus(order)) ? await getBankAccounts() : [];
+  const bankAccounts = order.payment_provider !== 'midtrans' && ACTIONABLE_STATUSES.includes(effectiveStatus(order)) ? await getBankAccounts() : [];
   res.json({ order: serializeOrder(order), payments: payments.rows.map(serializePayment), bankAccounts });
 }));
 
@@ -249,6 +250,7 @@ router.post('/orders/:id/cancel', asyncHandler(async (req, res) => {
   const order = await loadOrderOr404(req.params.id, res);
   if (!order) return;
   if (order.user_id !== req.user.id) return res.status(403).json({ error: 'not_order_owner' });
+  if (order.payment_provider === 'midtrans') return res.status(409).json({ error: 'midtrans_payment_managed' });
 
   const upd = await query(
     `UPDATE orders SET status = 'cancelled', updated_at = NOW()
@@ -288,6 +290,7 @@ router.post('/orders/:id/payment-proof', proofLimiter, proofUpload.single('file'
     const order = await loadOrderOr404(req.params.id, res);
     if (!order) return;
     if (order.user_id !== req.user.id) return res.status(403).json({ error: 'not_order_owner' });
+    if (order.payment_provider === 'midtrans') return res.status(409).json({ error: 'midtrans_payment_managed' });
     if (!ACTIONABLE_STATUSES.includes(effectiveStatus(order))) {
       return res.status(409).json({ error: 'order_not_open' });
     }

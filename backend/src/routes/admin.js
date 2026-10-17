@@ -5395,6 +5395,7 @@ router.get('/orders/:id', asyncHandler(async (req, res) => {
     order: {
       id: order.id, orderNumber: order.order_number, courseId: order.course_id,
       courseTitle: order.course_title_snapshot, amountIdr: order.amount_idr,
+      paymentProvider: order.payment_provider, gatewayStatus: order.midtrans_status || null,
       status: orderEffectiveStatus(order), createdAt: order.created_at,
       expiresAt: order.expires_at, approvedAt: order.approved_at,
       user: { email: order.user_email, fullName: order.user_full_name },
@@ -5428,7 +5429,7 @@ router.post('/orders/:id/approve', asyncHandler(async (req, res) => {
       // uploads/cancellation and avoid opposite-order row-lock deadlocks.
       const orderRes = await client.query(
         `UPDATE orders SET status = 'approved', approved_at = NOW(), updated_at = NOW()
-          WHERE id = $1 AND status = 'awaiting_review' AND expires_at > clock_timestamp()
+          WHERE id = $1 AND status = 'awaiting_review' AND payment_provider = 'manual_transfer' AND expires_at > clock_timestamp()
           RETURNING *`,
         [orderId]
       );
@@ -5480,7 +5481,7 @@ router.post('/orders/:id/reject', asyncHandler(async (req, res) => {
     const result = await withTransaction(async (client) => {
       const orderRes = await client.query(
         `UPDATE orders SET status = 'rejected', updated_at = NOW()
-          WHERE id = $1 AND status = 'awaiting_review'
+          WHERE id = $1 AND status = 'awaiting_review' AND payment_provider = 'manual_transfer'
           RETURNING *`,
         [orderId]
       );

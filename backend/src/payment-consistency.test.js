@@ -51,7 +51,7 @@ test('payment HTTP transactions on PostgreSQL', {
     );
     CREATE TABLE admin_emails (email text);
   `);
-  for (const migration of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql']) {
+  for (const migration of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql', '215_course_midtrans.sql']) {
     await control.query(await readFile(new URL('../migrations/' + migration, import.meta.url), 'utf8'));
   }
   // A test-only trigger pauses a winning writer AFTER it acquires the order
@@ -170,6 +170,15 @@ test('payment HTTP transactions on PostgreSQL', {
       assert.ok(Number(result.rows[0].difference) < 1);
     });
   }
+  await t.test('Midtrans orders cannot use manual approval, rejection, proof upload or local cancellation', async () => {
+    const { order, payment } = await fixture();
+    await control.query("UPDATE orders SET payment_provider='midtrans', learning_mode='self_learning' WHERE id=$1", [order]);
+    assert.equal((await approve(order, payment)).status, 409);
+    assert.equal((await reject(order, payment)).status, 409);
+    assert.equal((await upload(order)).status, 409);
+    assert.equal((await cancel(order)).status, 409);
+    assert.equal((await state(order)).grants.length, 0);
+  });
   await t.test('requires an explicit valid payment ID and preserves authorization', async () => {
     const { order, payment } = await fixture();
     for (const action of ['approve', 'reject']) {

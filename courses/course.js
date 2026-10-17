@@ -108,7 +108,7 @@ function renderCourseUI(course, needsProfile, profile = {}) {
     document.getElementById('c-summary-total').textContent = price;
     const features = document.getElementById('c-features'); features.replaceChildren();
     for (const text of course.features || []) { const li = document.createElement('li'); li.textContent = '✓ ' + text; features.append(li); }
-    document.querySelector('.c-payment-method').textContent = course.is_free ? 'Gratis, tanpa pembayaran.' : 'Metode Pembayaran: Transfer Bank Manual';
+    document.querySelector('.c-payment-method').textContent = course.is_free ? 'Gratis, tanpa pembayaran.' : course.learning_mode === 'self_learning' ? 'Pembayaran melalui Midtrans. Akses aktif otomatis setelah pembayaran berhasil.' : 'Metode Pembayaran: Transfer Bank Manual';
   };
   updateSummary();
 

@@ -145,6 +145,38 @@ async function wireUploadForm(order) {
   });
 }
 
+function renderMidtransOrder(order, body) {
+  const canPay = order.status === 'pending_payment';
+  body.innerHTML = `
+    <p>${statusBadge(order.status)}</p>
+    <h2>Pembayaran Self Learning</h2>
+    <p>Bayar ${formatRupiah(order.amountIdr)} melalui Midtrans. Pilihan metode pembayaran ditampilkan di halaman Midtrans.</p>
+    <p>Akses materi aktif otomatis selama 1 tahun setelah pembayaran berhasil dikonfirmasi.</p>
+    ${canPay ? '<button type="button" class="c-submit" id="o-midtrans-pay">Bayar dengan Midtrans →</button>' : '<p>Pesanan sudah ditutup atau melewati batas waktu. Jika sudah membayar, periksa status pembayaran terlebih dahulu.</p>'}
+    <button type="button" id="o-midtrans-sync" style="margin-top:16px;">Periksa status pembayaran</button>
+    <p id="o-midtrans-error" role="alert" hidden></p>
+    ${!canPay ? `<p><a href="detail.html?slug=${encodeURIComponent(order.courseSlug || '')}&amp;mode=self_learning">Buat pesanan baru</a></p>` : ''}`;
+  document.getElementById('o-midtrans-sync').addEventListener('click', loadAndRender);
+  document.getElementById('o-midtrans-pay')?.addEventListener('click', async () => {
+    const button = document.getElementById('o-midtrans-pay');
+    const error = document.getElementById('o-midtrans-error');
+    button.disabled = true; error.hidden = true;
+    try {
+      const response = await window.ezApi(`/course-payments/orders/${encodeURIComponent(order.id)}/checkout`, { method: 'POST', body: '{}' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'payment_unavailable');
+      const url = new URL(result.redirectUrl);
+      if (url.protocol !== 'https:' || !['app.midtrans.com', 'app.sandbox.midtrans.com'].includes(url.host) || !url.pathname.startsWith('/snap/') || url.username || url.password) throw new Error('invalid_payment_url');
+      window.location.assign(url.href);
+    } catch (err) {
+      error.textContent = err.message === 'course_midtrans_not_configured'
+        ? 'Pembayaran Midtrans belum tersedia. Hubungi admin untuk melanjutkan.'
+        : 'Halaman pembayaran belum bisa dibuka. Periksa status pembayaran, lalu coba lagi.';
+      error.hidden = false; button.disabled = false;
+    }
+  });
+}
+
 function renderOrder(data) {
   const { order, payments, bankAccounts } = data;
   document.title = `Pesanan ${order.orderNumber} - EzNihongo`;
@@ -158,6 +190,10 @@ function renderOrder(data) {
   setOrderLiveStatus(`Status pesanan: ${statusMeta.label}.`);
   const latestPayment = (payments || [])[0];
 
+  if (['refund', 'chargeback'].includes(order.gatewayStatus)) {
+    body.innerHTML = '<h2>Pembayaran dikembalikan</h2><p>Akses dari pembayaran ini sudah dihentikan. Hubungi admin jika membutuhkan bantuan.</p>';
+    return;
+  }
   if (order.status === "approved") {
     body.innerHTML = `
       <p style="margin-bottom:14px;">${statusBadge(order.status)}</p>
@@ -167,6 +203,10 @@ function renderOrder(data) {
     return;
   }
 
+  if (order.paymentProvider === 'midtrans') {
+    renderMidtransOrder(order, body);
+    return;
+  }
   if (order.status === "expired" || order.status === "cancelled") {
     body.innerHTML = `
       <p style="margin-bottom:14px;">${statusBadge(order.status)}</p>
@@ -225,7 +265,16 @@ async function loadAndRender() {
         `<p role="alert" style="color:var(--ink-700);">${esc(data.error || "Pesanan ini tidak bisa diakses.")}</p>`;
       return;
     }
-    const data = await res.json();
+    let data = await res.json();
+    if (data.order.paymentProvider === 'midtrans' && data.order.status !== 'approved') {
+      try {
+        const sync = await window.ezApi(`/course-payments/orders/${encodeURIComponent(id)}/sync`, { method: 'POST', body: '{}' });
+        if (sync.ok) {
+          const refreshed = await window.ezApi(`/orders/${encodeURIComponent(id)}`);
+          if (refreshed.ok) data = await refreshed.json();
+        }
+      } catch { /* Keep the last server-confirmed status. Never infer success from the return URL. */ }
+    }
     renderOrder(data);
     // Light polling while still in-review — no push notifications yet, so
     // the page quietly refreshes itself instead of requiring a manual reload.

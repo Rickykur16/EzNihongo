@@ -51,7 +51,7 @@ test('site visit beacon and admin report through real HTTP and PostgreSQL', {
     CREATE TABLE user_enrollments(id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID REFERENCES users(id),
       course_id UUID REFERENCES courses(id),enrolled_at TIMESTAMPTZ DEFAULT NOW(),UNIQUE(user_id,course_id));
   `);
-  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql', '204_site_events.sql', '204_site_events.sql']) {
+  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql', '215_course_midtrans.sql', '204_site_events.sql', '204_site_events.sql']) {
     await control.query(await readFile(new URL('../migrations/' + file, import.meta.url), 'utf8'));
   }
   await control.query(await readFile(new URL('../contracts/staff-schema-v1.sql', import.meta.url), 'utf8'));
