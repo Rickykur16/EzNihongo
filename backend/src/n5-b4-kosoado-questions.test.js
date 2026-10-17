@@ -11,11 +11,14 @@ import { KOSOADO_GRAMMAR_ID, KOSOADO_SOURCE_LESSON_ID, finalizeN5B4KosoadoQuesti
 const manifest = JSON.parse(await readFile(new URL('../content/n5-support/dialogue-support.json', import.meta.url), 'utf8'));
 const item = manifest.items.find(entry => entry.grammarId === KOSOADO_GRAMMAR_ID);
 
-test('quotes are found despite edited spacing and stay literal substrings', () => {
-  assert.equal(findQuote('はい、これは ほんです。', 'これは ほんです'), 'これは ほんです');
-  assert.equal(findQuote('はい、これはほんです。', 'これは ほんです'), 'これはほんです');
-  assert.equal(findQuote('はい、これ は　ほんです。', 'これは ほんです'), 'これ は　ほんです');
-  assert.equal(findQuote('いいえ、あれは かばんです。', 'これは ほんです'), null);
+test('quotes follow the live spelling (kanji, full-width ？, spacing)', () => {
+  // Production (deploy log 15 Oct 2026): first turn is 「アンナ: それは本ですか？」.
+  const live = kosoadoQuestions([{ speaker: 'アンナ', text: 'それは本ですか？' },
+    { speaker: 'ハディ', text: 'はい、これは本です。' }]);
+  assert.deepEqual(live[0].evidence, [{ turnIndex: 0, quote: 'それは本ですか' }, { turnIndex: 1, quote: 'これは本です' }]);
+  assert.match(live[0].prompt, /「それは本ですか」.*「これは本です」/u);
+  assert.equal(findQuote('はい、これ は　ほんです。', /これ\s*は[^。]*?です/u), 'これ は　ほんです');
+  assert.equal(kosoadoQuestions([{ speaker: 'A', text: 'あれは かばんですか。' }, { speaker: 'B', text: 'いいえ、あれは かばんです。' }]), null);
 });
 
 test('the reviewed 186 dialogue yields a valid, name-free set tied to the それ/これ turns', () => {
@@ -81,7 +84,7 @@ test('finalizer saves through the question service against the current dialogue'
 
     // The production symptom: the dialogue was edited in Ruang Kerja, so the
     // old set no longer matches and students see no question.
-    await client.query(`UPDATE module_grammar SET example_dialog=replace(example_dialog,'それは ほんですか','それはほんですか'),
+    await client.query(`UPDATE module_grammar SET example_dialog=replace(replace(example_dialog,'それは ほんですか。','それは本ですか？'),'これは ほんです','これは本です'),
       example_dialog_id=example_dialog_id || ' '`);
     const grammar = async () => (await client.query('SELECT * FROM module_grammar')).rows[0];
     assert.notEqual(dialogueFingerprint(await grammar()), item.dialogueFingerprint);
@@ -109,7 +112,7 @@ test('finalizer saves through the question service against the current dialogue'
       assert.equal(row.question_fingerprint, questionFingerprint({ kind: row.kind, prompt: row.prompt,
         options: row.options, correctIndex: row.correct_index, explanation: row.explanation, evidence: row.evidence }));
     }
-    assert.deepEqual(rows[0].evidence, [{ turnIndex: 0, quote: 'それはほんですか' }, { turnIndex: 1, quote: 'これは ほんです' }]);
+    assert.deepEqual(rows[0].evidence, [{ turnIndex: 0, quote: 'それは本ですか' }, { turnIndex: 1, quote: 'これは本です' }]);
 
     const versions = rows.map(r => r.question_version);
     assert.equal((await finalizeN5B4KosoadoQuestions(options)).status, 'already_applied');
