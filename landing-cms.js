@@ -48,10 +48,23 @@
     button.addEventListener('click', () => document.dispatchEvent(new CustomEvent('landing:consult', { detail: { opener: button } })));
     return button;
   }
+  function enrollmentCards(items) {
+    return ordered(items).flatMap(course => {
+      const cards = [];
+      if (course.self_learning_enabled === true) cards.push({ ...course,
+        learning_mode: 'self_learning', title: course.title + ' · Self Learning',
+        tagline: 'Belajar mandiri lewat materi dan latihan di dashboard.',
+        features: ['Akses materi dan latihan selama 1 tahun', 'Belajar sesuai waktumu', 'Kuis dan progres belajar'],
+        is_free: false, price_idr: course.self_learning_price_idr, price_label: '', period_label: ' / 1 tahun',
+        landing_price_published: true, landing_schedule: 'Belajar mandiri, tanpa jadwal live class.', cta_label: 'Daftar Self Learning' });
+      if (course.bootcamp_enabled !== false) cards.push({ ...course, learning_mode: 'bootcamp', title: course.title + ' · Bootcamp' });
+      return cards;
+    });
+  }
   function renderCourses(items) {
     const list = document.querySelector('#course-list'), status = document.querySelector('#course-status');
     list.replaceChildren(); let hasPublishedPrice = false;
-    const courses = ordered(items);
+    const courses = enrollmentCards(items);
     courses.forEach(course => {
       const view = courseView(course), card = el('article', 'cms-card cms-course');
       card.dataset.courseSlug = String(course.slug || '');
@@ -67,7 +80,7 @@
       content.append(el('p', 'cms-schedule', schedule || 'Hari dan jam kelas akan diumumkan.'));
       content.append(el('p', 'cms-price', view.price ? [view.price, view.period].filter(Boolean).join(' ') : 'Harga belum ditentukan'));
       if (view.price) hasPublishedPrice = true;
-      if (view.canOpenDetails) { const a = el('a', 'button small', course.cta_label || 'Lihat rincian kelas'); a.href = 'login.html?next=' + encodeURIComponent('courses/detail.html?slug=' + encodeURIComponent(course.slug)); content.append(a); }
+      if (view.canOpenDetails) { const a = el('a', 'button small', course.cta_label || 'Lihat rincian kelas'); a.href = 'login.html?next=' + encodeURIComponent('courses/detail.html?slug=' + encodeURIComponent(course.slug) + '&mode=' + course.learning_mode); content.append(a); }
       else if (view.available) content.append(consultButton(course.cta_label || 'Tanya tentang kelas'));
       else content.append(el('p', 'fine', 'Pendaftaran kelas ini belum dibuka.'));
       card.append(content); list.append(card);

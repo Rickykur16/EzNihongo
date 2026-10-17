@@ -47,11 +47,11 @@ test('payment HTTP transactions on PostgreSQL', {
     CREATE TABLE courses (id uuid PRIMARY KEY, slug text);
     CREATE TABLE user_enrollments (
       user_id uuid REFERENCES users(id), course_id uuid REFERENCES courses(id),
-      PRIMARY KEY(user_id, course_id)
+      enrolled_at timestamptz DEFAULT NOW(), PRIMARY KEY(user_id, course_id)
     );
     CREATE TABLE admin_emails (email text);
   `);
-  for (const migration of ['120_course_entitlements.sql', '121_course_orders.sql']) {
+  for (const migration of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql']) {
     await control.query(await readFile(new URL('../migrations/' + migration, import.meta.url), 'utf8'));
   }
   // A test-only trigger pauses a winning writer AFTER it acquires the order
@@ -158,6 +158,18 @@ test('payment HTTP transactions on PostgreSQL', {
     return Promise.all(requests);
   }
 
+  for (const mode of ['self_learning', 'bootcamp']) {
+    await t.test(`${mode} approval grants exactly one calendar year from activation`, async () => {
+      const { order, payment } = await fixture();
+      await control.query('UPDATE orders SET learning_mode=$2 WHERE id=$1', [order, mode]);
+      assert.equal((await approve(order, payment)).status, 200);
+      const result = await control.query(`SELECT e.learning_mode,
+        ABS(EXTRACT(EPOCH FROM (e.expires_at - (o.approved_at + INTERVAL '1 year')))) AS difference
+        FROM user_enrollments e JOIN orders o ON o.id=e.order_id WHERE o.id=$1`, [order]);
+      assert.equal(result.rows[0].learning_mode, mode);
+      assert.ok(Number(result.rows[0].difference) < 1);
+    });
+  }
   await t.test('requires an explicit valid payment ID and preserves authorization', async () => {
     const { order, payment } = await fixture();
     for (const action of ['approve', 'reject']) {

@@ -1,5 +1,5 @@
 import { query } from './db.js';
-import { userCanAccessCourse } from './entitlements.js';
+import { userCanAccessLiveClasses } from './entitlements.js';
 import { canJoinLiveClass, organizeStudentLiveClasses } from './live-class-rules.js';
 
 export { canJoinLiveClass } from './live-class-rules.js';
@@ -41,7 +41,7 @@ async function classesWithLessons(courseId, whereSql, params) {
 export async function loadEntitledLiveClasses(user, courseSlug) {
   const course = await query(`SELECT id, slug, title, level FROM courses WHERE slug = $1 AND is_published = TRUE LIMIT 1`, [courseSlug]);
   if (!course.rows[0]) return { error: 'course_not_found', status: 404 };
-  if (!(await userCanAccessCourse(user, course.rows[0].id))) return { error: 'not_enrolled', status: 403 };
+  if (!(await userCanAccessLiveClasses(user, course.rows[0].id))) return { error: 'bootcamp_required', status: 403 };
   const courseRow = course.rows[0];
   const [scheduled, completed] = await Promise.all([
     classesWithLessons(courseRow.id, `lc.status = 'scheduled' AND COALESCE(lc.ends_at, lc.starts_at + INTERVAL '3 hours') >= NOW()`, []),

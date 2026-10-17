@@ -38,7 +38,8 @@ async function ensureAuth(slug) {
       try { return JSON.parse(mirrored); } catch { /* fall through to login */ }
     }
   }
-  const here = `courses/detail.html?slug=${encodeURIComponent(slug)}`;
+  const mode = new URLSearchParams(location.search).get('mode');
+  const here = `courses/detail.html?slug=${encodeURIComponent(slug)}${mode ? '&mode=' + encodeURIComponent(mode) : ''}`;
   window.location.replace(`../login.html?next=${encodeURIComponent(here)}`);
   return false;
 }
@@ -78,23 +79,38 @@ function renderUnavailable(course) {
 }
 
 function renderCourseUI(course, needsProfile, profile = {}) {
-  const title = course.title || course.slug;
-  const tagline = course.tagline || course.description || "";
-  const priceLabel = course.is_free === true ? 'Gratis' : course.price_label
-    || (course.price_idr ? formatRupiah(course.price_idr) : "");
-  const period = course.period_label || "";
-  const features = Array.isArray(course.features) ? course.features : [];
-
-  document.title = `${title} - EzNihongo`;
-  document.getElementById("c-name").textContent = title;
-  document.getElementById("c-tagline").textContent = tagline;
-  document.getElementById("c-price").innerHTML = `${priceLabel} <span class="period">${period}</span>`;
-  document.getElementById("c-summary-price").textContent = priceLabel;
-  document.getElementById("c-summary-total").textContent = priceLabel;
-
-  document.getElementById("c-features").innerHTML = features
-    .map(f => `<li><span class="c-check">✓</span><span>${f}</span></li>`)
-    .join("");
+  const options = registrationOptions(course);
+  if (!options.length) { renderUnavailable(course); return; }
+  const requested = new URLSearchParams(location.search).get('mode');
+  course = options.find(option => option.learning_mode === requested) || options[0];
+  const selector = document.createElement('fieldset');
+  selector.className = 'c-mode-picker';
+  selector.innerHTML = '<legend>Pilih cara belajar</legend>';
+  for (const option of options) {
+    const label = document.createElement('label');
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'learning-mode'; radio.value = option.learning_mode;
+    radio.checked = option === course;
+    label.append(radio, document.createTextNode(option.mode_label + ' · ' + (option.is_free ? 'Gratis' : option.price_label || formatRupiah(option.price_idr))));
+    selector.append(label);
+  }
+  document.querySelector('.c-header').append(selector);
+  const updateSummary = () => {
+    document.title = course.title + ' - ' + course.mode_label + ' - EzNihongo';
+    document.getElementById('c-name').textContent = course.title;
+    document.getElementById('c-tagline').textContent = course.mode_label + ' · Akses 1 tahun sejak pendaftaran aktif';
+    const price = course.is_free === true ? 'Gratis' : course.price_label || formatRupiah(course.price_idr);
+    const priceEl = document.getElementById('c-price');
+    priceEl.textContent = price;
+    const period = document.createElement('span'); period.className = 'period';
+    period.textContent = ' ' + (course.period_label || ''); priceEl.append(period);
+    document.getElementById('c-summary-price').textContent = price;
+    document.getElementById('c-summary-total').textContent = price;
+    const features = document.getElementById('c-features'); features.replaceChildren();
+    for (const text of course.features || []) { const li = document.createElement('li'); li.textContent = '✓ ' + text; features.append(li); }
+    document.querySelector('.c-payment-method').textContent = course.is_free ? 'Gratis, tanpa pembayaran.' : 'Metode Pembayaran: Transfer Bank Manual';
+  };
+  updateSummary();
 
   // Modules list is out of scope for the course summary endpoint — hide that section
   // on the checkout page. (Module preview lives on the dashboard after purchase.)
@@ -109,7 +125,15 @@ function renderCourseUI(course, needsProfile, profile = {}) {
   const submitBtn = document.getElementById("c-submit");
   submitBtn.textContent = course.is_free === true ? "Daftar Kelas Gratis →" : "Buat Pesanan →";
   if (course.is_free === true) document.querySelector('#c-checkout-form .c-payment-method').textContent = 'Gratis — tidak ada pembayaran.';
-  const defaultLabel = submitBtn.textContent;
+  let defaultLabel = submitBtn.textContent;
+  selector.addEventListener('change', event => {
+    if (submitBtn.disabled) return;
+    course = options.find(option => option.learning_mode === event.target.value) || course;
+    updateSummary();
+    defaultLabel = course.is_free === true ? 'Daftar Kelas Gratis →' : 'Buat Pesanan →';
+    submitBtn.textContent = defaultLabel;
+    const url = new URL(location.href); url.searchParams.set('mode', course.learning_mode); history.replaceState(null, '', url);
+  });
 
   const showProfileFields = () => {
     if (document.getElementById('c-profile-fields')) return;
@@ -134,6 +158,7 @@ function renderCourseUI(course, needsProfile, profile = {}) {
       return;
     }
     btn.disabled = true;
+    selector.disabled = true;
 
     try {
       const steps = {
@@ -151,6 +176,7 @@ function renderCourseUI(course, needsProfile, profile = {}) {
     } catch (err) {
       btn.textContent = defaultLabel;
       btn.disabled = false;
+      selector.disabled = false;
       status.textContent = "";
       const fieldError = PROFILE_ERRORS[err.message];
       if (fieldError) {

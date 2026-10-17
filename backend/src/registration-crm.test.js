@@ -36,12 +36,12 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
   process.env.ANTHROPIC_API_KEY = ''; process.env.ELEVENLABS_API_KEY = '';
   await control.query(`CREATE TABLE users(id UUID PRIMARY KEY,email TEXT UNIQUE,full_name TEXT);
     CREATE TABLE courses(id UUID PRIMARY KEY,slug TEXT UNIQUE,title TEXT,is_published BOOLEAN DEFAULT true,is_available BOOLEAN DEFAULT true,price_idr INTEGER);
-    CREATE TABLE user_enrollments(id UUID DEFAULT gen_random_uuid(),user_id UUID REFERENCES users(id),course_id UUID REFERENCES courses(id),PRIMARY KEY(user_id,course_id));
+    CREATE TABLE user_enrollments(id UUID DEFAULT gen_random_uuid(),user_id UUID REFERENCES users(id),course_id UUID REFERENCES courses(id),enrolled_at timestamptz DEFAULT NOW(),PRIMARY KEY(user_id,course_id));
     CREATE TABLE admin_emails(email TEXT);
     CREATE TABLE app_settings(key TEXT PRIMARY KEY,value TEXT);
     CREATE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=NOW(); RETURN NEW; END $$;`);
   const migrate = async (directory, file) => control.query(await readFile(new URL(`../${directory}/${file}`, import.meta.url), 'utf8'));
-  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql', '202_registration_other_details.sql', '203_registration_japanese_level.sql']) await migrate('migrations', file);
+  for (const file of ['120_course_entitlements.sql', '121_course_orders.sql', '214_enrollment_modes.sql', '138_user_marketing_profile.sql', '200_registration_strategy.sql', '202_registration_other_details.sql', '203_registration_japanese_level.sql']) await migrate('migrations', file);
   // Normal migrations must also work before optional CRM has been installed.
   await migrate('migrations', '201_registration_crm_sources.sql');
   for (const file of ['001_marketing_crm.sql', '002_marketing_strategy.sql']) await migrate('crm-migrations', file);

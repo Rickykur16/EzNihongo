@@ -12,6 +12,8 @@ import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
 import { loadRegistrationProfile } from '../registration-profile.js';
 import { syncRegistrationLead } from '../registration-crm.js';
 
+import { enrollmentOffer } from '../enrollment-modes.js';
+
 const router = Router();
 router.use(requireAuth);
 
@@ -86,6 +88,7 @@ function serializeOrder(order) {
     courseId: order.course_id,
     courseSlug: order.course_slug || null,
     courseTitle: order.course_title_snapshot,
+    learningMode: order.learning_mode,
     amountIdr: order.amount_idr,
     currency: order.currency,
     paymentProvider: order.payment_provider,
@@ -143,7 +146,8 @@ router.post('/orders', asyncHandler(async (req, res) => {
   if (!courseSlug) return res.status(400).json({ error: 'courseSlug required' });
 
   const courseRes = await query(
-    `SELECT id, slug, title, price_idr, is_published, is_available, is_free
+    `SELECT id, slug, title, price_idr, is_published, is_available, is_free,
+            bootcamp_enabled, self_learning_enabled, self_learning_price_idr
        FROM courses WHERE slug = $1 LIMIT 1`,
     [courseSlug]
   );
@@ -152,8 +156,10 @@ router.post('/orders', asyncHandler(async (req, res) => {
   if (course.is_available === false) return res.status(403).json({ error: 'course_not_available' });
   // Excludes NULL by construction — an unclassified course is neither
   // free-joinable nor purchasable until an admin explicitly sets is_free.
-  if (course.is_free !== false) return res.status(403).json({ error: 'course_not_purchasable' });
-  if (!course.price_idr) return res.status(500).json({ error: 'course_price_not_configured' });
+  const offer = enrollmentOffer(course, req.body?.learningMode);
+  if (offer.error) return res.status(400).json({ error: offer.error });
+  if (offer.isFree !== false) return res.status(403).json({ error: 'course_not_purchasable' });
+  if (!Number.isSafeInteger(offer.priceIdr) || offer.priceIdr <= 0) return res.status(500).json({ error: 'course_price_not_configured' });
 
   if (await hasCourseAccess(req.user.id, course.id)) {
     return res.status(409).json({ error: 'already_enrolled' });
@@ -175,6 +181,9 @@ router.post('/orders', asyncHandler(async (req, res) => {
       [req.user.id, course.id, ACTIONABLE_STATUSES]
     );
     if (existing.rows.length > 0) {
+      if (existing.rows[0].learning_mode !== offer.mode) {
+        throw Object.assign(new Error('order_mode_conflict'), { status: 409 });
+      }
       return { order: existing.rows[0], alreadyOpen: true };
     }
 
@@ -186,10 +195,10 @@ router.post('/orders', asyncHandler(async (req, res) => {
       try {
         const ins = await runQuery(
           `INSERT INTO orders
-             (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at)
-           VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days')
+             (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at, learning_mode)
+           VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days', $6)
            RETURNING *`,
-          [generateOrderNumber(), req.user.id, course.id, course.title, course.price_idr]
+          [generateOrderNumber(), req.user.id, course.id, `${course.title} (${offer.label})`, offer.priceIdr, offer.mode]
         );
         return { order: ins.rows[0], alreadyOpen: false };
       } catch (err) {

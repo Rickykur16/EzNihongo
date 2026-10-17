@@ -11,6 +11,7 @@ import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
 import { BASE_EXPRESSION, MAX_EXPRESSIONS_PER_CHARACTER, inspectArt, isCharacterKey, isExpressionKey } from '../dialogue-art.js';
 import bcrypt from 'bcryptjs';
 import { query, withTransaction } from '../db.js';
+import { enrollmentModeFields } from '../enrollment-modes.js';
 import { landingCourseFields } from '../landing-course-fields.js';
 import { isCanonicalUuid, validateLiveClassFields } from '../live-class-admin-rules.js';
 import { REPORT_DAYS, siteReport } from './site-events.js';
@@ -897,6 +898,8 @@ router.post('/courses', asyncHandler(async (req, res) => {
   if (slugErr) return res.status(400).json({ error: slugErr });
   const landing = landingCourseFields(req.body, true);
   if (landing.error) return res.status(400).json({ error: landing.error });
+  const modes = enrollmentModeFields(req.body);
+  if (modes.error) return res.status(400).json({ error: modes.error });
   // isFree is tri-state (true/false/null = "not yet classified") — pass
   // through as-is rather than coercing with !!, which would collapse
   // "unclassified" into "paid". See migration 121.
@@ -905,8 +908,8 @@ router.post('/courses', asyncHandler(async (req, res) => {
     return client.query(
     `INSERT INTO courses
        (slug, title, description, level, thumbnail_url, sort_order, is_published, is_available,
-        price_idr, price_label, period_label, tagline, features, cta_label, is_featured, is_free, landing_price_published, landing_schedule)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+        price_idr, price_label, period_label, tagline, features, cta_label, is_featured, is_free, landing_price_published, landing_schedule, bootcamp_enabled, self_learning_enabled, self_learning_price_idr)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
     [
       slug, title, description || null, level || null, thumbnailUrl || null,
       sortOrder || 0, !!isPublished, isAvailable !== false,
@@ -914,7 +917,7 @@ router.post('/courses', asyncHandler(async (req, res) => {
       JSON.stringify(Array.isArray(features) ? features : []),
       ctaLabel || null, !!isFeatured,
       isFree === true ? true : (isFree === false ? false : null),
-      landing.pricePublished, landing.schedule,
+      landing.pricePublished, landing.schedule, modes.bootcamp ?? true, modes.self ?? false, modes.price ?? 249000,
     ]
     );
   });
@@ -938,6 +941,8 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
   const isFreeExplicit = isFree === true || isFree === false;
   const landing = landingCourseFields(req.body);
   if (landing.error) return res.status(400).json({ error: landing.error });
+  const modes = enrollmentModeFields(req.body);
+  if (modes.error) return res.status(400).json({ error: modes.error });
   const result = await withTransaction(async client => {
     await lockCurriculumCourse(client, req.params.id);
     return client.query(
@@ -960,6 +965,9 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
        is_free = CASE WHEN $17 THEN $18::boolean ELSE is_free END,
        landing_price_published = COALESCE($19::boolean, landing_price_published),
        landing_schedule = COALESCE($20, landing_schedule),
+       bootcamp_enabled = COALESCE($21::boolean, bootcamp_enabled),
+       self_learning_enabled = COALESCE($22::boolean, self_learning_enabled),
+       self_learning_price_idr = COALESCE($23::integer, self_learning_price_idr),
        updated_at = NOW()
      WHERE id = $1 RETURNING *`,
     [
@@ -968,7 +976,7 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
       Array.isArray(features) ? JSON.stringify(features) : null,
       ctaLabel, isFeatured,
       isFreeExplicit, isFreeExplicit ? isFree : null,
-      landing.pricePublished, landing.schedule,
+      landing.pricePublished, landing.schedule, modes.bootcamp, modes.self, modes.price,
     ]
     );
   });
@@ -5088,7 +5096,7 @@ router.get('/user-access', asyncHandler(async (req, res) => {
   if (!user) return res.status(404).json({ error: 'user_not_found' });
 
   const enrolled = await query(
-    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at,
+    `SELECT c.id AS course_id, c.slug, c.title, c.level, e.enrolled_at, e.learning_mode,
             e.status, e.expires_at, e.source, e.revoked_at
        FROM user_enrollments e
        JOIN courses c ON c.id = e.course_id
@@ -5436,11 +5444,12 @@ router.post('/orders/:id/approve', asyncHandler(async (req, res) => {
       if (payRes.rows.length === 0) throw Object.assign(new Error('payment_not_pending'), { code: 'ORDER_CONFLICT' });
 
       await client.query(
-        `INSERT INTO user_enrollments (user_id, course_id, status, source, order_id, expires_at, revoked_at)
-         VALUES ($1, $2, 'active', 'purchase', $3, NULL, NULL)
+        `INSERT INTO user_enrollments (user_id, course_id, status, source, order_id, expires_at, revoked_at, learning_mode)
+         VALUES ($1, $2, 'active', 'purchase', $3, NOW() + INTERVAL '1 year', NULL, $4)
          ON CONFLICT (user_id, course_id) DO UPDATE
-           SET status = 'active', source = 'purchase', order_id = $3, expires_at = NULL, revoked_at = NULL`,
-        [order.user_id, order.course_id, orderId]
+           SET status = 'active', source = 'purchase', order_id = $3,
+               expires_at = EXCLUDED.expires_at, revoked_at = NULL, learning_mode = EXCLUDED.learning_mode, enrolled_at = NOW()`,
+        [order.user_id, order.course_id, orderId, order.learning_mode]
       );
 
       return { order, payment: payRes.rows[0] };
