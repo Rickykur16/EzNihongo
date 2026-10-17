@@ -168,7 +168,8 @@ test('registration migration and HTTP flow persist strategy data without losing 
   process.env.MARKETING_CRM_ENABLED = 'false';
   process.env.TELEGRAM_BOT_TOKEN = ''; process.env.TELEGRAM_ADMIN_CHAT_ID = '';
   await control.query(`CREATE TABLE users(id UUID PRIMARY KEY, email TEXT, full_name TEXT);
-    CREATE TABLE courses(id UUID PRIMARY KEY, slug TEXT UNIQUE, is_published BOOLEAN, is_available BOOLEAN);
+    CREATE TABLE courses(id UUID PRIMARY KEY, slug TEXT UNIQUE, is_published BOOLEAN, is_available BOOLEAN,
+      self_learning_enabled BOOLEAN NOT NULL DEFAULT FALSE, bootcamp_enabled BOOLEAN NOT NULL DEFAULT TRUE);
     CREATE FUNCTION set_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=NOW(); RETURN NEW; END $$;`);
   await control.query(await readFile(new URL('../migrations/138_user_marketing_profile.sql', import.meta.url), 'utf8'));
   const userId = randomUUID(), otherId = randomUUID(), courseId = randomUUID();
