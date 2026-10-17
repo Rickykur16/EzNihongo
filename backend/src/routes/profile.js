@@ -4,6 +4,7 @@ import { requireAuth, asyncHandler } from '../middleware.js';
 import { notifyAdmin } from '../telegram.js';
 import { parseRegistrationProfile, serializeRegistrationProfile, registrationError, REGISTRATION_STRATEGY_VERSION } from '../registration-profile.js';
 import { syncRegistrationLead } from '../registration-crm.js';
+import { enrollmentOffer } from '../enrollment-modes.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -26,9 +27,10 @@ router.put('/profile/marketing', asyncHandler(async (req, res) => {
     // Same first lock as account erasure: a save cannot recreate erased data.
     const person = (await client.query('SELECT id, email, full_name FROM users WHERE id = $1 FOR UPDATE', [req.user.id])).rows[0];
     if (!person || person.email.endsWith('@dihapus.invalid')) throw registrationError(401, 'registration_account_unavailable');
-    const course = (await client.query('SELECT id, is_published, is_available FROM courses WHERE slug = $1 FOR SHARE', [data.courseSlug])).rows[0];
+    const course = (await client.query('SELECT id, is_published, is_available, self_learning_enabled, bootcamp_enabled FROM courses WHERE slug = $1 FOR SHARE', [data.courseSlug])).rows[0];
     if (!course || !course.is_published) throw registrationError(404, 'course_not_found');
-    if (course.is_available === false) throw registrationError(403, 'course_not_available');
+    const offer = enrollmentOffer(course, req.body?.learningMode);
+    if (offer.error) throw registrationError(offer.error === 'invalid_learning_mode' ? 400 : 403, offer.error);
 
     // The account's verified email is authoritative; only the name is editable.
     if (data.fullName !== undefined && data.fullName !== person.full_name) {

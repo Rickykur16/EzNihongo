@@ -236,7 +236,7 @@ async function init() {
     return;
   }
 
-  if (course.is_available === false) {
+  if (course.is_available === false && !registrationOptions(course).length) {
     renderUnavailable(course);
     return;
   }

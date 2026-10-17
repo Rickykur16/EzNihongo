@@ -21,7 +21,7 @@
       return label + ': ' + (view.price ? [view.price, view.period].filter(Boolean).join(' ') : 'harga belum diumumkan');
     }).join('. ') || 'Rincian harga kelas belum diumumkan.';
   }
-  if (typeof module !== 'undefined' && module.exports) module.exports = { courseView, coursePriceSummary };
+  if (typeof module !== 'undefined' && module.exports) module.exports = { courseView, coursePriceSummary, enrollmentCards };
   if (typeof document === 'undefined') return;
   const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; };
   function plain(value) {
@@ -52,7 +52,7 @@
     return ordered(items).flatMap(course => {
       const cards = [];
       if (course.self_learning_enabled === true) cards.push({ ...course,
-        learning_mode: 'self_learning', title: course.title + ' · Self Learning',
+        learning_mode: 'self_learning', is_available: true, title: course.title + ' · Self Learning',
         tagline: 'Belajar mandiri lewat materi dan latihan di dashboard.',
         features: ['Akses materi dan latihan selama 1 tahun', 'Belajar sesuai waktumu', 'Kuis dan progres belajar'],
         is_free: false, price_idr: course.self_learning_price_idr, price_label: '', period_label: ' / 1 tahun',

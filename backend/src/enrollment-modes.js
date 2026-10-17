@@ -3,6 +3,8 @@ export const LEARNING_MODES = ['self_learning', 'bootcamp'];
 export function enrollmentOffer(course, mode = 'bootcamp') {
   if (!LEARNING_MODES.includes(mode)) return { error: 'invalid_learning_mode' };
   const self = mode === 'self_learning';
+  // The legacy availability switch controls scheduled Bootcamp.
+  if (!self && course.is_available === false) return { error: 'course_not_available' };
   if (self ? course.self_learning_enabled !== true : course.bootcamp_enabled === false) {
     return { error: 'learning_mode_unavailable' };
   }

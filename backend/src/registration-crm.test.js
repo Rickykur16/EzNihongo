@@ -276,6 +276,23 @@ test('registration CRM and checkout transactions on isolated PostgreSQL', { skip
     assert.equal((await order(person, courses.paid2)).status, 201); assert.equal((await enroll(person, courses.free2)).status, 200);
   });
 
+  await t.test('Self Learning profile and checkout work while Bootcamp is closed', async () => {
+    const person = await user('independent-self-learning');
+    await control.query('UPDATE courses SET is_available=FALSE,self_learning_enabled=TRUE WHERE id=$1', [courses.paid.id]);
+    try {
+      assert.equal((await save(person)).status, 403);
+      assert.equal((await save(person, courses.paid, { learningMode: 'self_learning' })).status, 200);
+      assert.equal((await order(person)).status, 403);
+      const purchase = await request(person, '/orders', { courseSlug: courses.paid.slug, learningMode: 'self_learning' });
+      assert.equal(purchase.status, 201, JSON.stringify(purchase));
+      assert.equal(purchase.data.order.amountIdr, 249000);
+      assert.equal(purchase.data.order.paymentProvider, 'midtrans');
+      assert.equal((await control.query('SELECT count(*)::int AS n FROM user_enrollments WHERE user_id=$1', [person.id])).rows[0].n, 0);
+    } finally {
+      await control.query('UPDATE courses SET is_available=TRUE,self_learning_enabled=FALSE WHERE id=$1', [courses.paid.id]);
+    }
+  });
+
   await t.test('concurrent consent withdrawal waits for the user save and removes all committed copies', async () => {
     const person = await user('withdraw-race');
     await control.query('INSERT INTO test_pause VALUES($1)', [person.email]);

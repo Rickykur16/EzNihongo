@@ -20,8 +20,10 @@ Bootcamp agar hak akses lama tidak berkurang.
 
 Di Ruang Kerja > Kursus, admin dapat membuka/menutup masing-masing program
 dan mengubah harga Self Learning per kursus. Isian harga, fitur, jadwal, dan
-gratis/berbayar yang lama berlaku untuk Bootcamp. Status terbit/tersedia
-kursus tetap berlaku untuk kedua program.
+gratis/berbayar yang lama berlaku untuk Bootcamp.
+Draft kursus menyembunyikan kedua program. Status Segera Hadir hanya menutup
+pendaftaran Bootcamp. Pada kursus yang sudah terbit, centang Buka Self Learning
+membuka pembelian mandiri secara terpisah, termasuk ketika Bootcamp belum dibuka.
 
 Checkout dan formulir dashboard mengirim `learningMode`. Klien lama yang
 tidak mengirimnya tetap memilih Bootcamp. Harga selalu diambil dari database.
