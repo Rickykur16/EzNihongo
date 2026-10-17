@@ -599,8 +599,8 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   }
 
   const lookup = courseId
-    ? await query(`SELECT id, is_published, is_available, is_free, price_idr, bootcamp_enabled, self_learning_enabled, self_learning_price_idr FROM courses WHERE id = $1`, [courseId])
-    : await query(`SELECT id, is_published, is_available, is_free, price_idr, bootcamp_enabled, self_learning_enabled, self_learning_price_idr FROM courses WHERE slug = $1`, [courseSlug]);
+    ? await query(`SELECT id, is_published, is_available, is_free, bootcamp_enabled, self_learning_enabled, self_learning_price_idr FROM courses WHERE id = $1`, [courseId])
+    : await query(`SELECT id, is_published, is_available, is_free, bootcamp_enabled, self_learning_enabled, self_learning_price_idr FROM courses WHERE slug = $1`, [courseSlug]);
 
   if (lookup.rows.length === 0) {
     return res.status(404).json({ error: 'Kursus tidak ditemukan.' });
