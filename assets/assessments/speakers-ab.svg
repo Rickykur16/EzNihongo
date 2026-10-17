@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="340" viewBox="0 0 640 340" role="img" aria-labelledby="title desc">
+  <title id="title">AとB</title>
+  <desc id="desc">A di sebelah kiri dan B di sebelah kanan sedang bercakap. Pilih ucapan tokoh A berdasarkan situasi dalam audio.</desc>
+  <rect width="640" height="340" rx="20" fill="#fafaf7"/>
+  <g stroke="#25364a" stroke-width="3" stroke-linejoin="round">
+    <circle cx="160" cy="172" r="35" fill="#fff"/>
+    <path d="M105 294v-55q55-44 110 0v55" fill="#d9e7f2"/>
+    <circle cx="480" cy="172" r="35" fill="#fff"/>
+    <path d="M425 294v-55q55-44 110 0v55" fill="#f4e3d8"/>
+    <path d="M223 142h100q15 0 15 15v30q0 15-15 15h-70l-25 20v-20h-5q-15 0-15-15v-30q0-15 15-15z" fill="#fff"/>
+    <path d="M160 72v30m-10-12 10 12 10-12" fill="none" stroke="#bd173c" stroke-width="5"/>
+  </g>
+  <g font-family="sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#25364a">
+    <text x="160" y="60">A</text><text x="480" y="112">B</text>
+    <text x="273" y="185">…</text>
+  </g>
+</svg>
