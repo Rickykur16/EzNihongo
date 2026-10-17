@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-labelledby="title desc">
+ <title id="title">A dan B membicarakan sebuah buku</title>
+ <desc id="desc">A memegang buku dengan tulisan にほんご pada sampulnya. B bertanya kepada A.</desc>
+ <rect width="720" height="360" rx="20" fill="#f5f8fc"/>
+ <g font-family="sans-serif" text-anchor="middle" fill="#172f4f">
+  <circle cx="125" cy="98" r="34" fill="#c8d8ec" stroke="#172f4f" stroke-width="3"/>
+  <path d="M70 250v-65a55 55 0 0 1 110 0v65" fill="#dbe9f7" stroke="#172f4f" stroke-width="3"/>
+  <text x="125" y="305" font-size="28">A</text>
+  <circle cx="585" cy="98" r="34" fill="#c8d8ec" stroke="#172f4f" stroke-width="3"/>
+  <path d="M530 250v-65a55 55 0 0 1 110 0v65" fill="#dbe9f7" stroke="#172f4f" stroke-width="3"/>
+  <text x="585" y="305" font-size="28">B</text>
+  <path d="M170 205h85M530 205h-45" stroke="#172f4f" stroke-width="8" stroke-linecap="round"/>
+  <rect x="245" y="85" width="205" height="190" rx="8" fill="white" stroke="#172f4f" stroke-width="4"/>
+  <path d="M265 86v188" stroke="#d0dce9" stroke-width="7"/>
+  <text x="355" y="186" font-size="32">にほんご</text>
+ </g>
+</svg>

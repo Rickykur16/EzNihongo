@@ -5,6 +5,7 @@ export const CHAPTER_ASSESSMENT_VERSION = 'n5-assessment-v2';
 export const JLPT_ASSESSMENT_VERSION = 'n5-assessment-v3';
 export const REVISED_JLPT_ASSESSMENT_VERSION = 'n5-assessment-v4';
 export const EXPANDED_N5_ASSESSMENT_VERSION = 'n5-assessment-v5';
+export const REVIEWED_N5_ASSESSMENT_VERSION = 'n5-assessment-v6';
 export const N4_ASSESSMENT_VERSION = 'n4-assessment-v1';
 export const CHAPTER_BLUEPRINT = Object.freeze({ vocabulary: 6, grammar: 10, reading: 4, listening: 4 });
 export const CHAPTER_LABELS = Object.freeze({
@@ -19,29 +20,33 @@ export const CHAPTER_POLICY = Object.freeze({ passingScorePct: 70, categoryMinim
 export const EXPANDED_CHAPTER_BLUEPRINT = Object.freeze({ vocabulary: 11, grammar: 9, reading: 3, listening: 13 });
 export const EXPANDED_CHAPTER_POLICY = Object.freeze({ ...CHAPTER_POLICY, questionsPerForm: 36 });
 
+function expandedN5(policy) {
+  return [EXPANDED_N5_ASSESSMENT_VERSION, REVIEWED_N5_ASSESSMENT_VERSION].includes(policy?.version);
+}
+
 function chapterDefaults(policy) {
-  return policy?.version === EXPANDED_N5_ASSESSMENT_VERSION ? EXPANDED_CHAPTER_POLICY : CHAPTER_POLICY;
+  return expandedN5(policy) ? EXPANDED_CHAPTER_POLICY : CHAPTER_POLICY;
 }
 
 function snapshotRules(policy) {
   if (isFinalExam(policy)) return { ...policy, ...finalExamRules(policy) };
-  if (policy.version === EXPANDED_N5_ASSESSMENT_VERSION) return { ...EXPANDED_CHAPTER_POLICY, ...policy, questionsPerForm: 36 };
+  if (expandedN5(policy)) return { ...EXPANDED_CHAPTER_POLICY, ...policy, questionsPerForm: 36 };
   return { ...policy, ...CHAPTER_POLICY };
 }
 
 export function isChapterAssessment(policy) {
-  return isFinalExam(policy) || [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, EXPANDED_N5_ASSESSMENT_VERSION, N4_ASSESSMENT_VERSION].includes(policy?.version);
+  return isFinalExam(policy) || [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, EXPANDED_N5_ASSESSMENT_VERSION, REVIEWED_N5_ASSESSMENT_VERSION, N4_ASSESSMENT_VERSION].includes(policy?.version);
 }
 
 export function publicChapterRules(policy) {
   if (isFinalExam(policy)) return finalExamRules(policy);
-  return Object.fromEntries(Object.entries(chapterDefaults(policy)).map(([key, value]) => [key, key === 'questionsPerForm' && policy?.version === EXPANDED_N5_ASSESSMENT_VERSION ? value : policy?.[key] ?? value]));
+  return Object.fromEntries(Object.entries(chapterDefaults(policy)).map(([key, value]) => [key, key === 'questionsPerForm' && expandedN5(policy) ? value : policy?.[key] ?? value]));
 }
 
 export function assertChapterForm(policy, rows) {
   const final = isFinalExam(policy);
   const rules = final ? finalExamRules(policy) : chapterDefaults(policy);
-  const blueprint = final ? FINAL_EXAMS[policy.version].blueprint : policy?.version === EXPANDED_N5_ASSESSMENT_VERSION ? EXPANDED_CHAPTER_BLUEPRINT : CHAPTER_BLUEPRINT;
+  const blueprint = final ? FINAL_EXAMS[policy.version].blueprint : expandedN5(policy) ? EXPANDED_CHAPTER_BLUEPRINT : CHAPTER_BLUEPRINT;
   if (!isChapterAssessment(policy) || !Array.isArray(rows) || rows.length !== rules.questionsPerForm || (final && policy.selection !== (FINAL_EXAMS[policy.version].selection || 'all'))) throw new Error('assessment_bank_invalid');
   const objectives = new Set((policy.objectives || []).map(o => o.id));
   if (!objectives.size || objectives.size !== policy.objectives.length) throw new Error('assessment_bank_invalid');
@@ -56,7 +61,7 @@ export function assertChapterForm(policy, rows) {
   }
   for (const q of rows) {
     if (!objectives.has(q.assessment_meta?.objective) || q.assessment_meta?.version !== policy.version) throw new Error('assessment_bank_invalid');
-    const audioChoices = (final || [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, EXPANDED_N5_ASSESSMENT_VERSION].includes(policy.version)) && q.question_category === 'listening' &&
+    const audioChoices = (final || expandedN5(policy) || [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy.version)) && q.question_category === 'listening' &&
       ['verbal_expression', 'quick_response'].includes(q.assessment_meta.itemType);
     const validOptionCount = policy.version === N4_ASSESSMENT_VERSION ? [3,4].includes(q.options?.length) : q.options?.length === (audioChoices ? 3 : 4);
     if (q.question_type !== 'multiple_choice' || !validOptionCount || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
@@ -65,7 +70,12 @@ export function assertChapterForm(policy, rows) {
     if (q.question_category === 'reading' && !q.passage?.trim()) throw new Error('assessment_bank_invalid');
     if (q.question_category === 'listening' && !q.audio_script?.trim()) throw new Error('assessment_bank_invalid');
   }
-  for (const id of objectives) if (!rows.some(q => q.assessment_meta.objective === id)) throw new Error('assessment_bank_invalid');
+  for (const id of objectives) {
+    const evidence = rows.filter(q => q.assessment_meta.objective === id &&
+      (policy.version !== REVIEWED_N5_ASSESSMENT_VERSION || q.assessment_meta.objectiveEvidence === true));
+    const required = policy.version === REVIEWED_N5_ASSESSMENT_VERSION ? Math.max(1, policy.minimumObjectiveCorrect ?? CHAPTER_POLICY.minimumObjectiveCorrect) : 1;
+    if (evidence.length < required) throw new Error('assessment_bank_invalid');
+  }
 }
 
 export function createChapterSnapshot(policy, rows, previousForm, random = Math.random) {
@@ -81,7 +91,7 @@ export function createChapterSnapshot(policy, rows, previousForm, random = Math.
   // Validate BOTH forms before allowing either one to start.
   for (const name of ['A', 'B']) assertChapterForm(policy, rows.filter(q => q.assessment_meta?.form === name));
   const questions = rows.filter(q => q.assessment_meta.form === form).sort((a, b) =>
-    (policy.version === EXPANDED_N5_ASSESSMENT_VERSION ? a.section_number - b.section_number : 0) || a.sort_order - b.sort_order);
+    (expandedN5(policy) ? a.section_number - b.section_number : 0) || a.sort_order - b.sort_order);
   return structuredClone({ version: policy.version, form, policy: snapshotRules(policy), questions });
 }
 
@@ -117,7 +127,8 @@ export function gradeChapterAssessment(snapshot, answersByQuestion) {
     return { ...resultFor(rows, label, Math.ceil(rows.length * policy.categoryMinimumPct / 100), category), sectionNumber: i + 1 };
   });
   const objectiveResults = policy.objectives.map(objective => ({
-    ...resultFor(snapshot.questions.filter(q => q.assessment_meta.objective === objective.id), objective.canDo, policy.minimumObjectiveCorrect, objective.id),
+    ...resultFor(snapshot.questions.filter(q => q.assessment_meta.objective === objective.id &&
+      (policy.version !== REVIEWED_N5_ASSESSMENT_VERSION || q.assessment_meta.objectiveEvidence === true)), objective.canDo, policy.minimumObjectiveCorrect, objective.id),
     objectiveId: objective.id,
   }));
   const score = Object.values(correctByQuestion).filter(Boolean).length;
