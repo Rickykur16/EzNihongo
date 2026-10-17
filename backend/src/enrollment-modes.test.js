@@ -15,6 +15,8 @@ test('Self Learning price is independent of Bootcamp and unknown modes fail clos
   assert.equal(enrollmentOffer({ ...course, self_learning_enabled: false }, 'self_learning').error, 'learning_mode_unavailable');
   assert.equal(enrollmentOffer({ ...course, bootcamp_enabled: false }, 'bootcamp').error, 'learning_mode_unavailable');
   assert.equal(enrollmentOffer({ ...course, is_free: true }, 'self_learning').isFree, false);
+  assert.equal(enrollmentOffer({ ...course, is_available: false }, 'self_learning').priceIdr, 249000);
+  assert.equal(enrollmentOffer({ ...course, is_available: false }, 'bootcamp').error, 'course_not_available');
 });
 
 test('admin mode settings reject coercions, invalid money and partial updates preserve omitted fields', () => {
@@ -39,4 +41,8 @@ test('both signup pages send the selected mode and Self Learning always uses ord
   assert.deepEqual(calls, [{ url: '/orders', body: { courseSlug: 'n5', learningMode: 'self_learning' } }]);
   const unavailable = context.registrationOptions({ ...course, self_learning_enabled: false, bootcamp_enabled: false });
   assert.equal(unavailable.length, 0);
+  const independentlyOpen = context.registrationOptions({ ...course, is_available: false });
+  assert.equal(independentlyOpen.length, 1);
+  assert.equal(independentlyOpen[0].learning_mode, 'self_learning');
+  assert.equal(independentlyOpen[0].is_available, true);
 });

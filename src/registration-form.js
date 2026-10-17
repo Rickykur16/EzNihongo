@@ -262,8 +262,8 @@ function validateProfileFields() {
   return !firstInvalid;
 }
 
-async function saveProfileFields(courseSlug) {
-  const body = { courseSlug };
+async function saveProfileFields(courseSlug, learningMode) {
+  const body = { courseSlug, ...(learningMode ? { learningMode } : {}) };
   for (const [key, id] of Object.entries(PROFILE_FIELDS)) {
     const input = document.getElementById(id);
     body[key] = key === 'consent' ? input.checked : input.value.trim();
@@ -308,7 +308,7 @@ function registrationErrorMessage(code) {
 async function submitCourseRegistration(course, { needsProfile, onStep = () => {} } = {}) {
   if (needsProfile) {
     onStep('profile');
-    await saveProfileFields(course.slug);
+    await saveProfileFields(course.slug, course.learning_mode);
   }
   const free = course.is_free === true;
   onStep(free ? 'enroll' : 'order');
@@ -325,12 +325,12 @@ async function submitCourseRegistration(course, { needsProfile, onStep = () => {
 function registrationOptions(course) {
   const options = [];
   if (course.self_learning_enabled === true && Number(course.self_learning_price_idr) > 0) {
-    options.push({ ...course, learning_mode: 'self_learning', mode_label: 'Self Learning',
+    options.push({ ...course, is_available: true, learning_mode: 'self_learning', mode_label: 'Self Learning',
       is_free: false, price_idr: course.self_learning_price_idr,
       price_label: 'Rp ' + Number(course.self_learning_price_idr).toLocaleString('id-ID'), period_label: ' / 1 tahun',
       features: ['Akses materi dan latihan selama 1 tahun', 'Belajar mandiri sesuai waktumu', 'Kuis dan progres belajar di dashboard'] });
   }
-  if (course.bootcamp_enabled !== false && (course.is_free === true || (course.is_free === false && Number(course.price_idr) > 0))) {
+  if (course.is_available !== false && course.bootcamp_enabled !== false && (course.is_free === true || (course.is_free === false && Number(course.price_idr) > 0))) {
     options.push({ ...course, learning_mode: 'bootcamp', mode_label: 'Bootcamp',
       features: [...(Array.isArray(course.features) ? course.features : []), 'Akses materi dan live class selama 1 tahun'] });
   }

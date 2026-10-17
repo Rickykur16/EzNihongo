@@ -44,6 +44,15 @@ test('free course without profile questions: straight to enrollment', async () =
   assert.deepEqual(calls.map(([m, p]) => `${m} ${p}`), ['POST /enrollments']);
 });
 
+test('Self Learning mode accompanies both the required profile and the order', async () => {
+  const { ctx, calls } = setup({ '/orders': [201, { order: { id: 'self-order' } }] });
+  await ctx.submitCourseRegistration({ slug: 'n5', is_free: false, learning_mode: 'self_learning' }, { needsProfile: true });
+  assert.equal(calls[0][1], '/profile/marketing');
+  assert.equal(calls[0][2].learningMode, 'self_learning');
+  assert.equal(calls[1][1], '/orders');
+  assert.equal(calls[1][2].learningMode, 'self_learning');
+});
+
 test('server error code surfaces unchanged and stops before the order', async () => {
   const { ctx, calls } = setup({ '/profile/marketing': [400, { error: 'invalid_phone' }] });
   await assert.rejects(ctx.submitCourseRegistration({ slug: 'n5', is_free: false }, { needsProfile: true }), /invalid_phone/);

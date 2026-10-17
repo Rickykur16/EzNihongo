@@ -154,11 +154,10 @@ router.post('/orders', asyncHandler(async (req, res) => {
   );
   const course = courseRes.rows[0];
   if (!course || !course.is_published) return res.status(404).json({ error: 'course_not_found' });
-  if (course.is_available === false) return res.status(403).json({ error: 'course_not_available' });
   // Excludes NULL by construction — an unclassified course is neither
   // free-joinable nor purchasable until an admin explicitly sets is_free.
   const offer = enrollmentOffer(course, req.body?.learningMode);
-  if (offer.error) return res.status(400).json({ error: offer.error });
+  if (offer.error) return res.status(offer.error === 'invalid_learning_mode' ? 400 : 403).json({ error: offer.error });
   if (offer.isFree !== false) return res.status(403).json({ error: 'course_not_purchasable' });
   if (!Number.isSafeInteger(offer.priceIdr) || offer.priceIdr <= 0) return res.status(500).json({ error: 'course_price_not_configured' });
 

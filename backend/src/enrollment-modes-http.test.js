@@ -73,6 +73,17 @@ test('paid Self Learning cannot bypass payment through the free enrollment endpo
   const result = await request('/enrollments', { courseSlug: 'n5', learningMode: 'self_learning' });
   assert.equal(result.status, 403); assert.equal(result.data.error, 'payment_required');
 });
+test('Self Learning can be bought while Bootcamp enrollment remains closed', async () => {
+  course.is_available = false;
+  const self = await request('/orders', { courseSlug: 'n5', learningMode: 'self_learning' });
+  assert.equal(self.status, 201, JSON.stringify(self.data));
+  assert.equal(self.data.order.amountIdr, 249000);
+  assert.equal(self.data.order.paymentProvider, 'midtrans');
+  const bootcamp = await request('/orders', { courseSlug: 'n5', learningMode: 'bootcamp' });
+  assert.equal(bootcamp.status, 403); assert.equal(bootcamp.data.error, 'course_not_available');
+  course.is_published = false;
+  assert.equal((await request('/orders', { courseSlug: 'n5', learningMode: 'self_learning' })).status, 404);
+});
 test('closed modes and malformed modes cannot create an order', async () => {
   course.self_learning_enabled = false;
   assert.equal((await request('/orders', { courseSlug: 'n5', learningMode: 'self_learning' })).data.error, 'learning_mode_unavailable');
