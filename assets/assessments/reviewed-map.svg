@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-labelledby="title desc">
+ <title id="title">Lokasi sekolah dan bank</title>
+ <desc id="desc">Sekolah di kiri dan bank di kanan berdampingan pada satu jalan. Kedua bangunan terpisah dan berada pada baris yang sama.</desc>
+ <rect width="720" height="360" rx="20" fill="#f5f8fc"/>
+ <path d="M30 300h660" stroke="#b8c7d7" stroke-width="36"/>
+ <path d="M30 300h660" stroke="white" stroke-width="3" stroke-dasharray="20 14"/>
+ <g font-family="sans-serif" text-anchor="middle" stroke="#172f4f" stroke-width="3">
+  <path d="M80 130l125-65 125 65z" fill="#c8d8ec"/>
+  <rect x="100" y="130" width="210" height="135" fill="white"/>
+  <rect x="180" y="210" width="50" height="55" fill="#dbe9f7"/>
+  <path d="M125 190h30m100 0h30" stroke-width="20"/>
+  <rect x="390" y="130" width="230" height="135" fill="white"/>
+  <path d="M370 130l135-65 135 65z" fill="#c8d8ec"/>
+  <rect x="480" y="210" width="50" height="55" fill="#dbe9f7"/>
+  <path d="M420 210v40m170-40v40" stroke-width="12"/>
+  <g fill="#172f4f" stroke="none" font-size="28">
+   <text x="205" y="168">がっこう</text>
+   <text x="505" y="178">ぎんこう</text>
+  </g>
+ </g>
+</svg>
