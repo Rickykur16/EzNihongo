@@ -91,7 +91,7 @@ async function fixture(t){
    options.push(...opts.map(o=>({...o,question_id:q.id,image_url:'/owner-option.svg'})));
   }
   const snapshot=createChapterSnapshot(policy,p.sourceRows,'B');
-  for(const completed of [false,true])await db.query('INSERT INTO quiz_attempts VALUES($1,$2,$3,$4,$5,$6)',[randomUUID(),lesson,snapshot,[{questionId:snapshot.questions[0].id,optionId:snapshot.questions[0].options[0].id}],completed,completed?{score:19,total:24}:null]);
+  for(const completed of [false,true])await db.query('INSERT INTO quiz_attempts VALUES($1,$2,$3,$4,$5,$6)',[randomUUID(),lesson,JSON.stringify(snapshot),JSON.stringify([{questionId:snapshot.questions[0].id,optionId:snapshot.questions[0].options[0].id}]),completed,completed?JSON.stringify({score:19,total:24}):null]);
  }
  await db.query('INSERT INTO quiz_questions SELECT * FROM jsonb_populate_recordset(null::quiz_questions,$1)',[JSON.stringify(questions)]);
  await db.query('INSERT INTO quiz_options SELECT * FROM jsonb_populate_recordset(null::quiz_options,$1)',[JSON.stringify(options)]);
