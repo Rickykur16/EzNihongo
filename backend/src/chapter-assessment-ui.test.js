@@ -69,6 +69,21 @@ test('pending older bank shows normal preview and one start action using the act
   assert.doesNotMatch(container.innerHTML,/upgradeFrom/);
 });
 
+test('expanded N5 preview shows 36 questions and keeps the existing classroom rules',()=>{
+  const ctx=vm.createContext({escapeHtml:x=>x,escapeAttr:x=>x,kanaPlacementMeta:()=>null,COURSE_CONTENT:{},window:{}});
+  const start=html.indexOf('function renderQuizLandingCard(');
+  vm.runInContext(html.slice(start,html.indexOf('function escapeAttr',start)),ctx);
+  const container={innerHTML:''};
+  ctx.renderQuizLandingCard(container,'n5:b4:assignment','Assignment Bab 4',{
+    assessmentVersion:'n5-assessment-v5',questionsPerAttempt:36,poolSize:36,
+    canAttempt:true,passingScorePct:70,cooldownHours:12,objectives:[{canDo:'Mengenali benda sesuai konteks'}],
+    assessmentRules:{questionsPerForm:36,passingScorePct:70,categoryMinimumPct:50,minimumObjectiveCorrect:1},
+  });
+  const visible=container.innerHTML.replace(/<[^>]*>/g,'');
+  assert.match(visible,/36 soal/);assert.match(visible,/70%/);assert.match(visible,/50%/);
+  assert.match(visible,/Mulai assessment/);assert.doesNotMatch(visible,/24 soal|soal acak dari pool/);
+});
+
 test('spoken-choice numbers retain audio order while ordinary options can shuffle',()=>{
   const ctx=vm.createContext({normalizeQuizCategory:x=>x,Math:{random:()=>0,floor:Math.floor}});
   const start=html.indexOf('function transformQuestionFromApi(');

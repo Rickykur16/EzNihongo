@@ -4,6 +4,7 @@ import {FINAL_EXAMS,isFinalExam,finalExamRules,isJlptEstimate,gradeJlptEstimate}
 export const CHAPTER_ASSESSMENT_VERSION = 'n5-assessment-v2';
 export const JLPT_ASSESSMENT_VERSION = 'n5-assessment-v3';
 export const REVISED_JLPT_ASSESSMENT_VERSION = 'n5-assessment-v4';
+export const EXPANDED_N5_ASSESSMENT_VERSION = 'n5-assessment-v5';
 export const N4_ASSESSMENT_VERSION = 'n4-assessment-v1';
 export const CHAPTER_BLUEPRINT = Object.freeze({ vocabulary: 6, grammar: 10, reading: 4, listening: 4 });
 export const CHAPTER_LABELS = Object.freeze({
@@ -13,20 +14,34 @@ export const CHAPTER_LABELS = Object.freeze({
   listening: 'Menyimak',
 });
 export const CHAPTER_POLICY = Object.freeze({ passingScorePct: 70, categoryMinimumPct: 50, minimumObjectiveCorrect: 1, questionsPerForm: 24 });
+// Largest-remainder allocation of 36 against the official N5 approximate
+// item counts (21 vocabulary, 17 grammar, 5 reading, 24 listening).
+export const EXPANDED_CHAPTER_BLUEPRINT = Object.freeze({ vocabulary: 11, grammar: 9, reading: 3, listening: 13 });
+export const EXPANDED_CHAPTER_POLICY = Object.freeze({ ...CHAPTER_POLICY, questionsPerForm: 36 });
+
+function chapterDefaults(policy) {
+  return policy?.version === EXPANDED_N5_ASSESSMENT_VERSION ? EXPANDED_CHAPTER_POLICY : CHAPTER_POLICY;
+}
+
+function snapshotRules(policy) {
+  if (isFinalExam(policy)) return { ...policy, ...finalExamRules(policy) };
+  if (policy.version === EXPANDED_N5_ASSESSMENT_VERSION) return { ...EXPANDED_CHAPTER_POLICY, ...policy, questionsPerForm: 36 };
+  return { ...policy, ...CHAPTER_POLICY };
+}
 
 export function isChapterAssessment(policy) {
-  return isFinalExam(policy) || [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, N4_ASSESSMENT_VERSION].includes(policy?.version);
+  return isFinalExam(policy) || [CHAPTER_ASSESSMENT_VERSION, JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, EXPANDED_N5_ASSESSMENT_VERSION, N4_ASSESSMENT_VERSION].includes(policy?.version);
 }
 
 export function publicChapterRules(policy) {
   if (isFinalExam(policy)) return finalExamRules(policy);
-  return Object.fromEntries(Object.entries(CHAPTER_POLICY).map(([key, value]) => [key, policy?.[key] ?? value]));
+  return Object.fromEntries(Object.entries(chapterDefaults(policy)).map(([key, value]) => [key, key === 'questionsPerForm' && policy?.version === EXPANDED_N5_ASSESSMENT_VERSION ? value : policy?.[key] ?? value]));
 }
 
 export function assertChapterForm(policy, rows) {
   const final = isFinalExam(policy);
-  const rules = final ? finalExamRules(policy) : CHAPTER_POLICY;
-  const blueprint = final ? FINAL_EXAMS[policy.version].blueprint : CHAPTER_BLUEPRINT;
+  const rules = final ? finalExamRules(policy) : chapterDefaults(policy);
+  const blueprint = final ? FINAL_EXAMS[policy.version].blueprint : policy?.version === EXPANDED_N5_ASSESSMENT_VERSION ? EXPANDED_CHAPTER_BLUEPRINT : CHAPTER_BLUEPRINT;
   if (!isChapterAssessment(policy) || !Array.isArray(rows) || rows.length !== rules.questionsPerForm || (final && policy.selection !== (FINAL_EXAMS[policy.version].selection || 'all'))) throw new Error('assessment_bank_invalid');
   const objectives = new Set((policy.objectives || []).map(o => o.id));
   if (!objectives.size || objectives.size !== policy.objectives.length) throw new Error('assessment_bank_invalid');
@@ -41,7 +56,7 @@ export function assertChapterForm(policy, rows) {
   }
   for (const q of rows) {
     if (!objectives.has(q.assessment_meta?.objective) || q.assessment_meta?.version !== policy.version) throw new Error('assessment_bank_invalid');
-    const audioChoices = (final || [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION].includes(policy.version)) && q.question_category === 'listening' &&
+    const audioChoices = (final || [JLPT_ASSESSMENT_VERSION, REVISED_JLPT_ASSESSMENT_VERSION, EXPANDED_N5_ASSESSMENT_VERSION].includes(policy.version)) && q.question_category === 'listening' &&
       ['verbal_expression', 'quick_response'].includes(q.assessment_meta.itemType);
     const validOptionCount = policy.version === N4_ASSESSMENT_VERSION ? [3,4].includes(q.options?.length) : q.options?.length === (audioChoices ? 3 : 4);
     if (q.question_type !== 'multiple_choice' || !validOptionCount || q.options.filter(o => o.is_correct === true).length !== 1) throw new Error('assessment_bank_invalid');
@@ -58,15 +73,16 @@ export function createChapterSnapshot(policy, rows, previousForm, random = Math.
     assertChapterForm(policy, rows);
     if (rows.some(q => q.assessment_meta.form !== 'A')) throw new Error('assessment_bank_invalid');
     return structuredClone({ version: policy.version, form: 'ALL',
-      policy: { ...policy, ...(isFinalExam(policy) ? finalExamRules(policy) : CHAPTER_POLICY) },
+      policy: snapshotRules(policy),
       questions: [...rows].sort((a, b) => a.section_number - b.section_number || a.sort_order - b.sort_order) });
   }
   const form = previousForm === 'A' ? 'B' : previousForm === 'B' ? 'A' : random() < 0.5 ? 'A' : 'B';
   if (isFinalExam(policy) && (rows.length !== finalExamRules(policy).questionsPerForm * 2 || rows.some(q => !['A','B'].includes(q.assessment_meta?.form)))) throw new Error('assessment_bank_invalid');
   // Validate BOTH forms before allowing either one to start.
   for (const name of ['A', 'B']) assertChapterForm(policy, rows.filter(q => q.assessment_meta?.form === name));
-  const questions = rows.filter(q => q.assessment_meta.form === form).sort((a, b) => a.sort_order - b.sort_order);
-  return structuredClone({ version: policy.version, form, policy: { ...policy, ...(isFinalExam(policy) ? finalExamRules(policy) : CHAPTER_POLICY) }, questions });
+  const questions = rows.filter(q => q.assessment_meta.form === form).sort((a, b) =>
+    (policy.version === EXPANDED_N5_ASSESSMENT_VERSION ? a.section_number - b.section_number : 0) || a.sort_order - b.sort_order);
+  return structuredClone({ version: policy.version, form, policy: snapshotRules(policy), questions });
 }
 
 export function publicChapterQuestions(snapshot) {
