@@ -23,6 +23,16 @@ export async function hasCourseAccess(userId, courseId) {
   return r.rows.length > 0;
 }
 
+export async function userCanAccessLiveClasses(user, courseId) {
+  if (!user || !courseId) return false;
+  if (await isAdminEmail(user.email)) return true;
+  const r = await query(
+    `SELECT 1 FROM user_enrollments WHERE user_id = $1 AND course_id = $2
+      AND status = 'active' AND learning_mode = 'bootcamp'
+      AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1`, [user.id, courseId]);
+  return r.rows.length > 0;
+}
+
 export async function userCanAccessCourse(user, courseId) {
   if (!user || !courseId) return false;
   if (await hasCourseAccess(user.id, courseId)) return true;

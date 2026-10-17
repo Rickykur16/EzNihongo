@@ -329,3 +329,10 @@ body :where(a, button, input, select):focus-visible {
   .c-card { padding: 22px 18px; }
   .c-summary-row { gap: 16px; }
 }
+
+.c-mode-picker { border: 0; padding: 0; margin: 24px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
+.c-mode-picker legend { font-weight: 700; margin-bottom: 12px; }
+.c-mode-picker label { display: flex; align-items: center; gap: 10px; padding: 16px; border: 1px solid #d4d4d4; border-radius: 12px; background: #fff; cursor: pointer; }
+.c-mode-picker label:has(input:checked) { border-color: #c8102e; background: #fff5f5; }
+.c-mode-picker input { accent-color: #c8102e; }
+.c-mode-picker label:focus-within { outline: 2px solid #c8102e; outline-offset: 3px; }

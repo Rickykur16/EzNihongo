@@ -17,7 +17,7 @@ export { masteryDisplay, weeklyInsight } from './dashboard-rules.js';
 // jadi expires_at-nya null (= tanpa batas waktu), bukan "sudah berakhir".
 async function accessibleCourses(user) {
   const enrolled = await query(
-    `SELECT c.id, c.slug, c.title, c.level, c.sort_order, e.expires_at
+    `SELECT c.id, c.slug, c.title, c.level, c.sort_order, e.expires_at, e.learning_mode
        FROM user_enrollments e JOIN courses c ON c.id = e.course_id
       WHERE e.user_id = $1 AND e.status = 'active' AND (e.expires_at IS NULL OR e.expires_at > NOW())
       ORDER BY c.sort_order, c.created_at`, [user.id]
@@ -142,5 +142,5 @@ export async function loadDashboard(user, courseSlug) {
   const review = summarizeCandidates(reviewData.candidates.filter((candidate) => candidate.courseId === selected.id));
   const mastery = { ...generic, grammar: grammar.display };
   const focus = pickFocus(mastery, grammar, review, course.continueLearning);
-  return { greetingName: String(profile.rows[0]?.full_name || '').trim().split(/\s+/)[0] || null, courses: courses.map(({ id, slug, title, level, expires_at }) => ({ id, slug, title, level, expiresAt: expires_at || null })), course: { id: course.id, slug: course.slug, title: course.title, level: course.level, progress: course.progress, expiresAt: course.expires_at || null }, continueLearning: course.continueLearning, review, mastery, focus, weeklyActivity: activity, weeklyInsight: weeklyInsight({ reviewDue: review.total, ...activity, focus }), liveClass };
+  return { greetingName: String(profile.rows[0]?.full_name || '').trim().split(/\s+/)[0] || null, courses: courses.map(({ id, slug, title, level, expires_at }) => ({ id, slug, title, level, expiresAt: expires_at || null })), course: { id: course.id, slug: course.slug, title: course.title, level: course.level, progress: course.progress, learningMode: selected.learning_mode || 'bootcamp', expiresAt: course.expires_at || null }, continueLearning: course.continueLearning, review, mastery, focus, weeklyActivity: activity, weeklyInsight: weeklyInsight({ reviewDue: review.total, ...activity, focus }), liveClass };
 }

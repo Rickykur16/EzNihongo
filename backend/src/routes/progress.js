@@ -13,6 +13,8 @@ import { renderTtsAudio } from './tts.js';
 import { isCanonicalUuid } from '../live-class-admin-rules.js';
 import rateLimit from 'express-rate-limit';
 
+import { enrollmentOffer } from '../enrollment-modes.js';
+
 const router = Router();
 const assessmentAudioLimiter = rateLimit({ windowMs: 60000, limit: 40, standardHeaders: 'draft-7', legacyHeaders: false });
 
@@ -597,8 +599,8 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   }
 
   const lookup = courseId
-    ? await query(`SELECT id, is_published, is_available, is_free FROM courses WHERE id = $1`, [courseId])
-    : await query(`SELECT id, is_published, is_available, is_free FROM courses WHERE slug = $1`, [courseSlug]);
+    ? await query(`SELECT id, is_published, is_available, is_free, bootcamp_enabled, self_learning_enabled, self_learning_price_idr FROM courses WHERE id = $1`, [courseId])
+    : await query(`SELECT id, is_published, is_available, is_free, bootcamp_enabled, self_learning_enabled, self_learning_price_idr FROM courses WHERE slug = $1`, [courseSlug]);
 
   if (lookup.rows.length === 0) {
     return res.status(404).json({ error: 'Kursus tidak ditemukan.' });
@@ -612,7 +614,9 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   }
   // Strict IS TRUE — excludes both FALSE (paid) and NULL (unclassified) by
   // construction, so neither can slip through as "not FALSE therefore free".
-  if (course.is_free !== true) {
+  const offer = enrollmentOffer(course, req.body?.learningMode);
+  if (offer.error) return res.status(400).json({ error: offer.error });
+  if (offer.isFree !== true) {
     return res.status(403).json({ error: 'payment_required' });
   }
 
@@ -622,19 +626,21 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
   const alreadyEnrolled = await withTransaction(async client => {
     const user = (await client.query('SELECT id,email,full_name FROM users WHERE id=$1 FOR UPDATE', [req.user.id])).rows[0];
     const existing = await client.query(
-      `SELECT id, status FROM user_enrollments WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+      `SELECT id, status, expires_at FROM user_enrollments WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
       [req.user.id, course.id]
     );
     if (existing.rows[0]?.status === 'revoked') {
       throw Object.assign(new Error('access_revoked'), { status: 403 });
     }
-    if (existing.rows.length) return true;
+    if (existing.rows.length && (!existing.rows[0].expires_at || new Date(existing.rows[0].expires_at) > new Date())) return true;
     const profile = await loadRegistrationProfile(client, req.user.id);
     await syncRegistrationLead(client, user, profile, course.id);
     await client.query(
-      `INSERT INTO user_enrollments (user_id, course_id, status, source)
-       VALUES ($1, $2, 'active', 'self_enroll') ON CONFLICT (user_id, course_id) DO NOTHING`,
-      [req.user.id, course.id]
+      `INSERT INTO user_enrollments (user_id, course_id, status, source, learning_mode, expires_at)
+       VALUES ($1, $2, 'active', 'self_enroll', $3, NOW() + INTERVAL '1 year')
+       ON CONFLICT (user_id, course_id) DO UPDATE SET
+         learning_mode = EXCLUDED.learning_mode, expires_at = EXCLUDED.expires_at, enrolled_at = NOW()`,
+      [req.user.id, course.id, offer.mode]
     );
     return false;
   });
@@ -652,7 +658,7 @@ router.post('/enrollments', asyncHandler(async (req, res) => {
 router.get('/enrollments/me', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT c.id, c.slug, c.title, c.description, c.level, c.thumbnail_url,
-            e.enrolled_at, e.expires_at, e.source
+            e.enrolled_at, e.expires_at, e.source, e.learning_mode
      FROM user_enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.user_id = $1

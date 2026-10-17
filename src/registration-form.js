@@ -280,6 +280,10 @@ async function saveProfileFields(courseSlug) {
 // Pesan untuk kode galat dari PUT /profile/marketing, POST /orders, dan
 // POST /enrollments yang bukan galat per-isian (PROFILE_ERRORS).
 const REGISTRATION_ERROR_MESSAGES = {
+  invalid_learning_mode: 'Pilih Self Learning atau Bootcamp.',
+  learning_mode_unavailable: 'Pilihan belajar ini belum dibuka. Pilih program lain.',
+  order_mode_conflict: 'Masih ada pesanan untuk program lain di kursus ini. Buka Pesanan Saya dan batalkan pesanan lama sebelum mengganti program.',
+  payment_required: 'Program ini memerlukan pembayaran. Muat ulang halaman untuk melihat harga terbaru.',
   already_enrolled: 'Kamu sudah terdaftar di kelas ini. Buka Dashboard untuk mulai belajar.',
   course_not_available: 'Pendaftaran kelas ini belum dibuka. Silakan kembali ke daftar kelas.',
   course_not_found: 'Kelas tidak ditemukan. Silakan kembali ke daftar kelas.',
@@ -310,9 +314,25 @@ async function submitCourseRegistration(course, { needsProfile, onStep = () => {
   onStep(free ? 'enroll' : 'order');
   const res = await window.ezApi(free ? '/enrollments' : '/orders', {
     method: 'POST',
-    body: JSON.stringify({ courseSlug: course.slug }),
+    body: JSON.stringify({ courseSlug: course.slug, ...(course.learning_mode ? { learningMode: course.learning_mode } : {}) }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return free ? { kind: 'enrolled', slug: course.slug } : { kind: 'order', orderId: data.order.id };
+}
+
+// Both signup entry points use the same offer list. Prices remain server-authoritative.
+function registrationOptions(course) {
+  const options = [];
+  if (course.self_learning_enabled === true && Number(course.self_learning_price_idr) > 0) {
+    options.push({ ...course, learning_mode: 'self_learning', mode_label: 'Self Learning',
+      is_free: false, price_idr: course.self_learning_price_idr,
+      price_label: 'Rp ' + Number(course.self_learning_price_idr).toLocaleString('id-ID'), period_label: ' / 1 tahun',
+      features: ['Akses materi dan latihan selama 1 tahun', 'Belajar mandiri sesuai waktumu', 'Kuis dan progres belajar di dashboard'] });
+  }
+  if (course.bootcamp_enabled !== false && (course.is_free === true || (course.is_free === false && Number(course.price_idr) > 0))) {
+    options.push({ ...course, learning_mode: 'bootcamp', mode_label: 'Bootcamp',
+      features: [...(Array.isArray(course.features) ? course.features : []), 'Akses materi dan live class selama 1 tahun'] });
+  }
+  return options;
 }

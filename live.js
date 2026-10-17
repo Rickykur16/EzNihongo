@@ -77,6 +77,11 @@
       const requested = new URLSearchParams(location.search).get('course') || '';
       const dashboard = await api(`/dashboard/me${requested ? `?course=${encodeURIComponent(requested)}` : ''}`);
       if (!dashboard.course) { app.removeAttribute('aria-busy'); app.innerHTML = `<div class="page"><div class="empty"><strong>Belum ada kelas aktif.</strong><br>Daftar atau aktifkan kelas untuk melihat Live Class.${ezSignedInAsHtml(signedInUser)}</div></div>`; return; }
+      if (dashboard.course.learningMode === 'self_learning') {
+        app.removeAttribute('aria-busy');
+        app.innerHTML = '<div class="page"><div class="empty"><strong>Live Class tersedia untuk peserta Bootcamp.</strong><p>Kamu terdaftar di Self Learning. Materi dan latihan bisa dibuka dari halaman Belajar.</p><a class="btn" href="welcome.html?course=' + encodeURIComponent(dashboard.course.slug) + '">Lanjut Belajar</a></div></div>';
+        return;
+      }
       document.getElementById('learn-nav').href = `welcome.html?course=${encodeURIComponent(dashboard.course.slug)}`;
       document.getElementById('progress-nav').href = `progress.html?v=${release}&course=${encodeURIComponent(dashboard.course.slug)}`;
       data = await api(`/live-classes?course=${encodeURIComponent(dashboard.course.slug)}`);

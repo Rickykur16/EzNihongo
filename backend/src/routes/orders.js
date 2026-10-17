@@ -12,6 +12,8 @@ import { uploadLimits, uploadErrorHandler } from '../upload-safety.js';
 import { loadRegistrationProfile } from '../registration-profile.js';
 import { syncRegistrationLead } from '../registration-crm.js';
 
+import { enrollmentOffer } from '../enrollment-modes.js';
+
 const router = Router();
 router.use(requireAuth);
 
@@ -71,7 +73,7 @@ async function notifyAdminNewProof(order) {
 function notifyAdminNewOrder(order) {
   const amount = Number(order.amount_idr) || 0;
   return notifyAdmin([
-    '🛒 Pesanan baru (menunggu transfer)',
+    order.payment_provider === 'midtrans' ? '🛒 Pesanan Self Learning (Midtrans)' : '🛒 Pesanan baru (menunggu transfer)',
     `Pesanan: ${order.order_number}`,
     `Kursus: ${order.course_title_snapshot}`,
     `Nominal: Rp ${amount.toLocaleString('id-ID')}`,
@@ -86,6 +88,8 @@ function serializeOrder(order) {
     courseId: order.course_id,
     courseSlug: order.course_slug || null,
     courseTitle: order.course_title_snapshot,
+    learningMode: order.learning_mode,
+    gatewayStatus: order.midtrans_status || null,
     amountIdr: order.amount_idr,
     currency: order.currency,
     paymentProvider: order.payment_provider,
@@ -143,7 +147,8 @@ router.post('/orders', asyncHandler(async (req, res) => {
   if (!courseSlug) return res.status(400).json({ error: 'courseSlug required' });
 
   const courseRes = await query(
-    `SELECT id, slug, title, price_idr, is_published, is_available, is_free
+    `SELECT id, slug, title, price_idr, is_published, is_available, is_free,
+            bootcamp_enabled, self_learning_enabled, self_learning_price_idr
        FROM courses WHERE slug = $1 LIMIT 1`,
     [courseSlug]
   );
@@ -152,8 +157,10 @@ router.post('/orders', asyncHandler(async (req, res) => {
   if (course.is_available === false) return res.status(403).json({ error: 'course_not_available' });
   // Excludes NULL by construction — an unclassified course is neither
   // free-joinable nor purchasable until an admin explicitly sets is_free.
-  if (course.is_free !== false) return res.status(403).json({ error: 'course_not_purchasable' });
-  if (!course.price_idr) return res.status(500).json({ error: 'course_price_not_configured' });
+  const offer = enrollmentOffer(course, req.body?.learningMode);
+  if (offer.error) return res.status(400).json({ error: offer.error });
+  if (offer.isFree !== false) return res.status(403).json({ error: 'course_not_purchasable' });
+  if (!Number.isSafeInteger(offer.priceIdr) || offer.priceIdr <= 0) return res.status(500).json({ error: 'course_price_not_configured' });
 
   if (await hasCourseAccess(req.user.id, course.id)) {
     return res.status(409).json({ error: 'already_enrolled' });
@@ -175,6 +182,9 @@ router.post('/orders', asyncHandler(async (req, res) => {
       [req.user.id, course.id, ACTIONABLE_STATUSES]
     );
     if (existing.rows.length > 0) {
+      if (existing.rows[0].learning_mode !== offer.mode) {
+        throw Object.assign(new Error('order_mode_conflict'), { status: 409 });
+      }
       return { order: existing.rows[0], alreadyOpen: true };
     }
 
@@ -186,10 +196,10 @@ router.post('/orders', asyncHandler(async (req, res) => {
       try {
         const ins = await runQuery(
           `INSERT INTO orders
-             (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at)
-           VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days')
+             (order_number, user_id, course_id, course_title_snapshot, amount_idr, expires_at, learning_mode, payment_provider)
+           VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '3 days', $6, $7)
            RETURNING *`,
-          [generateOrderNumber(), req.user.id, course.id, course.title, course.price_idr]
+          [generateOrderNumber(), req.user.id, course.id, `${course.title} (${offer.label})`, offer.priceIdr, offer.mode, offer.mode === 'self_learning' ? 'midtrans' : 'manual_transfer']
         );
         return { order: ins.rows[0], alreadyOpen: false };
       } catch (err) {
@@ -206,7 +216,7 @@ router.post('/orders', asyncHandler(async (req, res) => {
   const bankAccounts = await getBankAccounts();
   res.status(alreadyOpen ? 200 : 201).json({
     order: serializeOrder({ ...order, course_slug: course.slug }),
-    bankAccounts, alreadyOpen,
+    bankAccounts: order.payment_provider === 'midtrans' ? [] : bankAccounts, alreadyOpen,
   });
 }));
 
@@ -231,7 +241,7 @@ router.get('/orders/:id', asyncHandler(async (req, res) => {
     `SELECT * FROM order_payments WHERE order_id = $1 ORDER BY submitted_at DESC`,
     [order.id]
   );
-  const bankAccounts = ACTIONABLE_STATUSES.includes(effectiveStatus(order)) ? await getBankAccounts() : [];
+  const bankAccounts = order.payment_provider !== 'midtrans' && ACTIONABLE_STATUSES.includes(effectiveStatus(order)) ? await getBankAccounts() : [];
   res.json({ order: serializeOrder(order), payments: payments.rows.map(serializePayment), bankAccounts });
 }));
 
@@ -240,6 +250,7 @@ router.post('/orders/:id/cancel', asyncHandler(async (req, res) => {
   const order = await loadOrderOr404(req.params.id, res);
   if (!order) return;
   if (order.user_id !== req.user.id) return res.status(403).json({ error: 'not_order_owner' });
+  if (order.payment_provider === 'midtrans') return res.status(409).json({ error: 'midtrans_payment_managed' });
 
   const upd = await query(
     `UPDATE orders SET status = 'cancelled', updated_at = NOW()
@@ -279,6 +290,7 @@ router.post('/orders/:id/payment-proof', proofLimiter, proofUpload.single('file'
     const order = await loadOrderOr404(req.params.id, res);
     if (!order) return;
     if (order.user_id !== req.user.id) return res.status(403).json({ error: 'not_order_owner' });
+    if (order.payment_provider === 'midtrans') return res.status(409).json({ error: 'midtrans_payment_managed' });
     if (!ACTIONABLE_STATUSES.includes(effectiveStatus(order))) {
       return res.status(409).json({ error: 'order_not_open' });
     }
