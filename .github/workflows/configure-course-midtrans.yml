@@ -1,0 +1,38 @@
+name: Configure Self Learning Midtrans
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+jobs:
+  configure:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install new merchant secret on the reviewed production release
+        env:
+          COURSE_MIDTRANS_SERVER_KEY: ${{ secrets.COURSE_MIDTRANS_SERVER_KEY }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          RELEASE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          test -n "$COURSE_MIDTRANS_SERVER_KEY"
+          test -n "$VPS_SSH_KEY"
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          umask 077
+          task_key=$(mktemp "$RUNNER_TEMP/midtrans-ssh.XXXXXX")
+          task_hosts=$(mktemp "$RUNNER_TEMP/midtrans-hosts.XXXXXX")
+          trap 'rm -f -- "$task_key" "$task_hosts"' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" > "$task_key"
+          unset VPS_SSH_KEY
+          printf '%s\n' '168.144.107.34 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKtNQztQw8A73MiuW8WO/1v2qVDjL9iey6NDy95egZ+2' > "$task_hosts"
+          # Transfer only through encrypted stdin, never command arguments.
+          printf '%s' "$COURSE_MIDTRANS_SERVER_KEY" |
+            ssh -i "$task_key" -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o ConnectTimeout=15 -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$task_hosts" root@168.144.107.34 \
+              "cd /var/www/eznihongo && test \"\$(git rev-parse HEAD)\" = '$RELEASE_SHA' && node backend/scripts/configure-course-midtrans.mjs"
