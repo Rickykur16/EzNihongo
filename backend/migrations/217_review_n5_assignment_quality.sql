@@ -20,7 +20,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3ce758a6-256d-3457-b92c-af5e8ce4f155",
         "form": "A",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-a-v01-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -37,7 +39,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3d2e8a39-f14e-3c96-ab4e-dfd367c3077f",
         "form": "A",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-a-v02-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -54,7 +58,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1e2937a0-4729-34fc-9eb6-42baf9ed46d8",
         "form": "A",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-a-v03-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -71,7 +77,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c6e73218-69d3-3024-a4d6-155155a5f8b0",
         "form": "A",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-a-v04-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -88,7 +96,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0c8a85ad-0695-378c-b412-44b6e323109d",
         "form": "A",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-a-v05-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -105,7 +115,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ba89211c-28b7-3a17-8282-eb64d8f15467",
         "form": "A",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-a-v06-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -122,7 +134,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "107670bc-3402-35ba-94f6-044276917ae4",
         "form": "A",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-a-g01-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -139,7 +153,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9618684c-56c5-34a3-abf4-1e260e6bf9e8",
         "form": "A",
         "expectedMeta": {
-          "objective": "negation"
+          "key": "b03-a-g02-expanded",
+          "objective": "negation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -156,7 +172,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "20c31dc7-11a2-314a-8205-b0833bbc8804",
         "form": "A",
         "expectedMeta": {
-          "objective": "question"
+          "key": "b03-a-g03-expanded",
+          "objective": "question",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -173,7 +191,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0613c93e-7418-3bdf-b613-6093197b94ec",
         "form": "A",
         "expectedMeta": {
-          "objective": "addition"
+          "key": "b03-a-g04-expanded",
+          "objective": "addition",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -190,7 +210,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "448a4723-cc65-332d-a79a-1203da868a17",
         "form": "A",
         "expectedMeta": {
-          "objective": "stance"
+          "key": "b03-a-g06-expanded",
+          "objective": "stance",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -207,7 +229,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e50e9668-9579-3d52-be47-6d660c63ffb3",
         "form": "A",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-a-g07-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -224,7 +248,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7c48be05-c47d-3122-9b0c-4fd111d56ee0",
         "form": "A",
         "expectedMeta": {
-          "objective": "negation"
+          "key": "b03-a-g08-expanded",
+          "objective": "negation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -241,7 +267,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "80567d82-4433-3f69-aef6-8281dece7822",
         "form": "A",
         "expectedMeta": {
-          "objective": "question"
+          "key": "b03-a-g09-expanded",
+          "objective": "question",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -258,7 +286,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "aaa7f213-1235-3eb4-b371-2c256ddd6d28",
         "form": "A",
         "expectedMeta": {
-          "objective": "addition"
+          "key": "b03-a-g10-expanded",
+          "objective": "addition",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -275,7 +305,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3fef6158-d628-3482-ba6c-76cde989d8b2",
         "form": "A",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-a-r01-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -292,7 +324,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1ee80a38-915d-3b3b-96b4-15097dbefc11",
         "form": "A",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-a-r02-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -309,7 +343,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bbd0ee24-0cc1-3b38-a8c8-300f8872c519",
         "form": "A",
         "expectedMeta": {
-          "objective": "negation"
+          "key": "b03-a-r03-expanded",
+          "objective": "negation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -326,7 +362,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1084e35f-d05e-361f-8261-ce11e037f9fd",
         "form": "A",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-a-l01-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -343,7 +381,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8bf0e150-45ec-3f71-8659-5f2cf8ff136c",
         "form": "A",
         "expectedMeta": {
-          "objective": "negation"
+          "key": "b03-a-l02-expanded",
+          "objective": "negation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -360,7 +400,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9d98c038-d6b5-3b63-8f84-7c2b0452ff74",
         "form": "A",
         "expectedMeta": {
-          "objective": "addition"
+          "key": "b03-a-l03-expanded",
+          "objective": "addition",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -377,7 +419,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "28e9e084-6e15-315a-9c41-0964f382d4cd",
         "form": "A",
         "expectedMeta": {
-          "objective": "stance"
+          "key": "b03-a-l04-expanded",
+          "objective": "stance",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -394,7 +438,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "62db1274-c084-37f1-9b99-5acf4274b81d",
         "form": "B",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-b-v01-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -411,7 +457,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6b8e6cb7-56c5-30dc-a380-3cc67deef35a",
         "form": "B",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-b-v02-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -428,7 +476,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3c579298-ba83-3500-9dd1-e486022a2086",
         "form": "B",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-b-v03-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -445,7 +495,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c6157a47-e2a6-3503-998a-c5c2e365ec9e",
         "form": "B",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-b-v04-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -462,7 +514,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c536164b-3eec-32bd-8674-aa1246bcbd7d",
         "form": "B",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-b-v05-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -479,7 +533,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "29f1a53a-a4a6-3c91-b113-6c5db17586bd",
         "form": "B",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-b-v06-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -496,7 +552,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "39943bd2-f954-33a5-8491-75c0c816e960",
         "form": "B",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-b-g01-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -513,7 +571,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d4fc0fbb-456e-3304-a0ef-9373cf1e590d",
         "form": "B",
         "expectedMeta": {
-          "objective": "negation"
+          "key": "b03-b-g02-expanded",
+          "objective": "negation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -530,7 +590,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cd70abbe-1862-3f41-af67-41227fb62e26",
         "form": "B",
         "expectedMeta": {
-          "objective": "question"
+          "key": "b03-b-g03-expanded",
+          "objective": "question",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -547,7 +609,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ee0f9667-a00d-3076-9e5a-212f3910da10",
         "form": "B",
         "expectedMeta": {
-          "objective": "addition"
+          "key": "b03-b-g04-expanded",
+          "objective": "addition",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -564,7 +628,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "33b93f98-898b-3e90-9593-6f8baa75001c",
         "form": "B",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-b-g06-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -581,7 +647,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f3b58ab2-8a27-3c1d-ab1f-11ea4bea874b",
         "form": "B",
         "expectedMeta": {
-          "objective": "negation"
+          "key": "b03-b-g07-expanded",
+          "objective": "negation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -598,7 +666,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1f02caa5-527a-3d2b-89b7-e0c6e55f5944",
         "form": "B",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-b-g08-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -615,7 +685,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "10015ef0-952d-3713-ac87-2eab949b2998",
         "form": "B",
         "expectedMeta": {
-          "objective": "addition"
+          "key": "b03-b-g09-expanded",
+          "objective": "addition",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -632,7 +704,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "167bef08-45a7-3f13-8d77-71e1beed7a40",
         "form": "B",
         "expectedMeta": {
-          "objective": "stance"
+          "key": "b03-b-g10-expanded",
+          "objective": "stance",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -649,7 +723,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a59fb9f9-0e70-3e62-9362-2772de694597",
         "form": "B",
         "expectedMeta": {
-          "objective": "identity"
+          "key": "b03-b-r01-expanded",
+          "objective": "identity",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -666,7 +742,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f9411ec4-13c2-320b-82f2-78688b096638",
         "form": "B",
         "expectedMeta": {
-          "objective": "addition"
+          "key": "b03-b-r02-expanded",
+          "objective": "addition",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -683,7 +761,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5d060ad1-4ed0-3417-b7ba-716902490d53",
         "form": "B",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-b-r03-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -700,7 +780,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d7f0db5a-7d1f-3df8-b91e-68fe66adbfc3",
         "form": "B",
         "expectedMeta": {
-          "objective": "question"
+          "key": "b03-b-l01-expanded",
+          "objective": "question",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -717,7 +799,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "78fc7b17-2fdc-36db-9e85-1b5f3bf3cb3a",
         "form": "B",
         "expectedMeta": {
-          "objective": "negation"
+          "key": "b03-b-l02-expanded",
+          "objective": "negation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -734,7 +818,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "13a32501-f5fa-332e-97b0-16adaa72ded0",
         "form": "B",
         "expectedMeta": {
-          "objective": "relation"
+          "key": "b03-b-l03-expanded",
+          "objective": "relation",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -751,7 +837,9 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "527976dc-2d57-3177-b4a8-9a72df9b7760",
         "form": "B",
         "expectedMeta": {
-          "objective": "stance"
+          "key": "b03-b-l04-expanded",
+          "objective": "stance",
+          "itemType": null
         },
         "revision": {
           "fields": {},
@@ -768,6 +856,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "15907f98-69e5-37a7-9140-3164e8973aad",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-vocabulary-1",
           "objective": "relation",
           "itemType": "context_vocabulary"
         },
@@ -786,6 +875,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "373337da-b240-315c-a7da-05ec8005e900",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-vocabulary-2",
           "objective": "relation",
           "itemType": "context_vocabulary"
         },
@@ -804,6 +894,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "06c5a6b7-aca9-3eec-9ca2-f5222fc44125",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-vocabulary-3",
           "objective": "identity",
           "itemType": "context_vocabulary"
         },
@@ -822,6 +913,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2bafff2b-3599-302d-a6bb-7e6e6f794c8d",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-vocabulary-4",
           "objective": "identity",
           "itemType": "context_vocabulary"
         },
@@ -840,6 +932,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "29ffa5e7-c56c-30a8-8f2c-365786fdc28d",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-vocabulary-5",
           "objective": "relation",
           "itemType": "paraphrase"
         },
@@ -858,6 +951,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1d3e2ce7-1abd-3d9d-b7a5-caf0c0a9a259",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-1",
           "objective": "negation",
           "itemType": "key_points"
         },
@@ -876,6 +970,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "100c7c6f-e8de-3b16-b7bc-f475aa8cb143",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-2",
           "objective": "question",
           "itemType": "quick_response"
         },
@@ -894,6 +989,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "40510746-e83e-3732-84b6-ae63ebd52f8b",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-3",
           "objective": "identity",
           "itemType": "key_points"
         },
@@ -912,6 +1008,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0994ec69-484b-386f-8332-fbec9881e375",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-4",
           "objective": "negation",
           "itemType": "key_points"
         },
@@ -930,6 +1027,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b9fcd310-6e61-3eb5-b9e9-8032abb1f430",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-5",
           "objective": "addition",
           "itemType": "key_points"
         },
@@ -948,6 +1046,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "44c5e460-b491-30ae-9a6d-ebbfdbde63a3",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-6",
           "objective": "identity",
           "itemType": "verbal_expression"
         },
@@ -972,6 +1071,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d46dc2bb-ba01-30b5-bfd8-05429df50f9d",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-7",
           "objective": "negation",
           "itemType": "verbal_expression"
         },
@@ -996,6 +1096,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ec40105c-d73e-3a3c-a0b4-4beb23bb2f21",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-8",
           "objective": "addition",
           "itemType": "quick_response"
         },
@@ -1014,6 +1115,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7c61a7f9-c4df-3549-98bc-360164a143b6",
         "form": "A",
         "expectedMeta": {
+          "key": "b03-a-expanded-listening-9",
           "objective": "question",
           "itemType": "quick_response"
         },
@@ -1032,6 +1134,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b91436aa-628c-3d09-bfb9-f1bb6ca64e37",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-vocabulary-1",
           "objective": "relation",
           "itemType": "context_vocabulary"
         },
@@ -1050,6 +1153,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "133d4dd7-3ef4-3018-be45-b7932b4efb15",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-vocabulary-2",
           "objective": "identity",
           "itemType": "context_vocabulary"
         },
@@ -1068,6 +1172,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "66f5b837-a0c6-3232-ba01-99fad65be2f7",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-vocabulary-3",
           "objective": "question",
           "itemType": "context_vocabulary"
         },
@@ -1086,6 +1191,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e713bd66-014b-30b2-87a7-d1252fd8caf3",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-vocabulary-4",
           "objective": "relation",
           "itemType": "context_vocabulary"
         },
@@ -1104,6 +1210,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f0fa1027-8929-3f79-b896-ccec169ed547",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-vocabulary-5",
           "objective": "negation",
           "itemType": "paraphrase"
         },
@@ -1122,6 +1229,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2ee6e1f0-adc5-33ae-9083-256d4faef863",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-1",
           "objective": "addition",
           "itemType": "key_points"
         },
@@ -1140,6 +1248,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c2947d20-c609-3bd0-bf85-9fa38a753d8e",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-2",
           "objective": "question",
           "itemType": "quick_response"
         },
@@ -1158,6 +1267,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3f337e30-b9c0-3d3f-8f88-1aa39b798d3b",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-3",
           "objective": "relation",
           "itemType": "key_points"
         },
@@ -1176,6 +1286,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f42317ef-a6ab-35c9-b2ca-0254295df63b",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-4",
           "objective": "addition",
           "itemType": "key_points"
         },
@@ -1194,6 +1305,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fbc54366-7596-3f43-a3b6-473667b96383",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-5",
           "objective": "negation",
           "itemType": "key_points"
         },
@@ -1212,6 +1324,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f3cdb34d-815f-39b5-b0b4-20772616b62c",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-6",
           "objective": "addition",
           "itemType": "verbal_expression"
         },
@@ -1236,6 +1349,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ddf563d0-5b07-354d-b074-a884217cd96d",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-7",
           "objective": "relation",
           "itemType": "verbal_expression"
         },
@@ -1260,6 +1374,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a667b863-b7bf-39cb-be2f-1351bf174ba8",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-8",
           "objective": "question",
           "itemType": "quick_response"
         },
@@ -1278,6 +1393,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9c8b6cb0-c04d-3114-9ad9-00c126cd767c",
         "form": "B",
         "expectedMeta": {
+          "key": "b03-b-expanded-listening-9",
           "objective": "identity",
           "itemType": "quick_response"
         },
@@ -1305,6 +1421,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "04d4efa6-07db-3a0e-873c-841bd7ea0deb",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -1323,6 +1440,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9f9745c4-1f8f-3674-9489-b207048ed13b",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -1341,6 +1459,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a18e9414-7d84-3c19-b017-22b900bd9d41",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -1359,6 +1478,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "12fc7f62-e6fb-392f-a0fd-e512ac8731c0",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -1377,6 +1497,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b1e3878c-976b-358f-bb4f-2e589947fa1b",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-5-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -1395,6 +1516,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b0b15ac7-42e8-35e4-9871-110c0b9a393b",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-6-expanded",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -1413,6 +1535,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2706710a-61f8-3970-9d85-93134bcdda29",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -1431,6 +1554,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9aee781d-8132-343c-9b8f-f7e352a1f1c2",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -1449,6 +1573,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a4533f62-2c51-36a6-ac97-bd83b81cd088",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-9-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -1467,6 +1592,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6edf52f3-6ae0-3c18-bd4c-8ebc9ea19d6d",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-10-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -1485,6 +1611,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d2ec3cc7-63d8-365c-8c22-e9eb6b99cf37",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -1503,6 +1630,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7c0bd553-fbcb-3bdc-8887-093ff29259d3",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-13-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -1521,6 +1649,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9145afe9-4f7d-31de-b9e9-fdec419c635f",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-14-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -1539,6 +1668,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "11440854-b4e9-330f-baf9-32dee0fef644",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-15-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -1557,6 +1687,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4c2a3bce-14e4-3ebd-b4c9-f191b1910eb8",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -1575,6 +1706,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "daceb61e-64c7-309e-877e-9ef7b54c5bd5",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-17-expanded",
           "objective": "goal2",
           "itemType": "short_reading"
         },
@@ -1593,6 +1725,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1587a14a-31e9-3ee0-9d37-391268f6117f",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-18-expanded",
           "objective": "goal3",
           "itemType": "medium_reading"
         },
@@ -1611,6 +1744,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "65e1ee21-e06c-3ddf-ac7d-9305b2683c1e",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-19-expanded",
           "objective": "goal2",
           "itemType": "information_retrieval"
         },
@@ -1629,6 +1763,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f817fa46-b09d-3db7-bd36-e9a499c59879",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -1647,6 +1782,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "74a7fb61-c42c-3e75-b8f3-bf55504aa610",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-22-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -1665,8 +1801,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e8701bf2-a5de-33cb-9710-c475b418a15c",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-23-expanded",
           "objective": "goal3",
-          "itemType": "verbal_expression"
+          "itemType": "verbal_expression",
+          "distractorReasons": [
+            "“いいえ、かばんです。” tidak sesuai konteks. Tokoh A perlu mengoreksi dugaan bahasa Inggris.",
+            "Tokoh A perlu mengoreksi dugaan bahasa Inggris.",
+            "“はい、えいごの ほんです。” tidak sesuai konteks. Tokoh A perlu mengoreksi dugaan bahasa Inggris."
+          ],
+          "spokenChoices": [
+            "いいえ、かばんです。",
+            "いいえ、にほんごの ほんです。",
+            "はい、えいごの ほんです。"
+          ]
         },
         "revision": {
           "fields": {
@@ -1744,6 +1891,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1c7be91d-6f30-3d35-a10e-cf3dbda074f2",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-jlpt-r2-24-expanded",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -1762,6 +1910,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bcdd3491-904c-3cbf-ac7d-7847ddfc4d4a",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -1780,6 +1929,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9a6bf971-17cb-37f4-94c6-bdef16d76d87",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -1798,6 +1948,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "19c5cd33-c896-3771-b8d7-6f93304a5f2a",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-vocabulary-3",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -1816,6 +1967,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cd8b2f49-c667-31d9-ba2d-bf02bec5114b",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -1834,6 +1986,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b93d1ee6-4fe0-3522-8226-9ce89c1b2080",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -1852,6 +2005,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "84adaaef-1227-35d2-b41e-3bacba8c324c",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-1",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -1870,6 +2024,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8ca6b878-a2de-394e-9601-e985f7e07edd",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-2",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -1888,6 +2043,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7e2fd7bf-2f8c-38ff-8507-48707b9f7eba",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -1906,6 +2062,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "aad6ba7d-3f80-38d5-8ea3-d82caebfc215",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-4",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -1924,6 +2081,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0a8bf984-5dd1-35c1-8b23-bde4c897891c",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-5",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -1942,6 +2100,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2f51aeca-8a27-3fd6-8dc6-3fea8c2a4ced",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -1960,6 +2119,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3501a1b4-ee22-3489-b00d-df7271f07b5c",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -1984,6 +2144,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "046038ab-5485-368a-8e6e-c22a46121859",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-8",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -2008,6 +2169,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0f2c75a2-2f27-366e-afad-53f035124581",
         "form": "A",
         "expectedMeta": {
+          "key": "b04-a-expanded-listening-9",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -2035,6 +2197,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "43e85846-7c6b-3dca-9af9-a6c1541359ce",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-1-expanded",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -2053,6 +2216,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0c69eb70-96a8-3410-a4d2-9e1e9f9cec56",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -2071,6 +2235,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6cd36f37-236e-3ad2-bb37-ce61168b12ef",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-3-expanded",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -2089,6 +2254,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3b4a2edd-0048-3042-bb1f-727f8bb3d191",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -2107,6 +2273,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1cc1975e-7c3e-32bf-8f8f-2bacfd54291e",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-5-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -2125,6 +2292,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0a1451f6-295c-3fd6-8e2e-57fd5cde480f",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-6-expanded",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -2143,6 +2311,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "054c2407-8313-394d-9e17-a995838d2e52",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -2161,6 +2330,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5625b960-35f7-35d0-adc0-d09766351822",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-8-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -2179,6 +2349,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3da5f8d2-a3ac-3a49-80b9-6003d902d57b",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-9-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -2197,6 +2368,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cf3d20aa-7a8b-3719-8c7c-405ec7f24936",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-10-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -2215,6 +2387,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7c231cef-feaf-3ae5-9ca9-3f6f3d2f2385",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-11-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -2233,6 +2406,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a2d2590a-ced1-3d3f-9f04-8d9bb588d1a4",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-13-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -2251,6 +2425,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b53d10b5-37c7-30f4-a86b-f8652c4e7937",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-14-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -2269,6 +2444,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "86c3817c-748f-384e-a3a6-055ac945afc1",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-15-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -2287,6 +2463,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "84b08957-b7b0-35ac-a04a-c47ab8b2aaf7",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -2305,6 +2482,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ab169cf1-837a-3fb8-8da3-850a6d581d44",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-17-expanded",
           "objective": "goal3",
           "itemType": "short_reading"
         },
@@ -2323,6 +2501,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f28612d1-1252-3b47-b959-2b65869c7ef4",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-18-expanded",
           "objective": "goal2",
           "itemType": "medium_reading"
         },
@@ -2341,6 +2520,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8e76882d-4032-3fea-93ff-c94b1e28c701",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-19-expanded",
           "objective": "goal1",
           "itemType": "information_retrieval"
         },
@@ -2359,6 +2539,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4596d849-23fa-3133-9c94-3bded9dc2338",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -2377,6 +2558,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "83dfe673-0cd9-39f3-8c76-8bcc1470ac52",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-22-expanded",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -2395,6 +2577,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "585296ac-a921-3790-9852-7d5e88372df4",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -2413,6 +2596,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1c9757f1-1e97-37c8-92da-d84266d37af1",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-jlpt-r2-24-expanded",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -2431,6 +2615,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5293269c-b551-31cd-a570-99520633965c",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -2449,6 +2634,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d5ecedd6-a003-3942-b316-aa5fb854d696",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-vocabulary-2",
           "objective": "goal3",
           "itemType": "orthography"
         },
@@ -2467,6 +2653,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c4007e2f-0a22-36a9-a8da-17d75ea4ccd2",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-vocabulary-3",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -2485,6 +2672,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "53ec9cf2-66ac-3eab-91b4-19679711c644",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-vocabulary-4",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -2503,6 +2691,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fc9f5957-a537-3735-aa5d-809bce92be30",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -2521,6 +2710,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5e1e5f31-fb1a-3daa-b790-9911a84e6990",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-1",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -2539,6 +2729,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "863e69eb-8334-30a3-837f-4633b2680469",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-2",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -2557,6 +2748,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "96bd8a4f-4349-3fb7-9f7f-e7232a015757",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-3",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -2575,6 +2767,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "039226e3-096e-3c19-a9f5-b0ef23ed3f63",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-4",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -2593,6 +2786,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "561c807e-0f09-3d31-abe6-d290dfb4728b",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-5",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -2611,6 +2805,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3154b422-1ecc-3052-9bc7-d2e882cdff61",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -2629,6 +2824,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "917e7c7a-9f70-314a-a38f-10451205abd1",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-7",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -2653,6 +2849,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7853840f-1837-39a9-8cd0-d0eda8f30975",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-8",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -2677,6 +2874,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a60c2aed-7501-3b10-910d-1a4586fb4094",
         "form": "A",
         "expectedMeta": {
+          "key": "b05-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -2704,6 +2902,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3e1b209c-e97b-34b7-b82c-e1d7bafe5141",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -2722,6 +2921,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2de6b263-614f-3052-a257-6bf494df8324",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -2740,6 +2940,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ef4f6bd2-363a-34ff-85fd-3462e4bb3694",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -2758,6 +2959,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8c4118d7-13af-3bad-8a92-ecaf4fa6601a",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-4-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -2776,6 +2978,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e067f9cb-0e19-3a59-8509-551adfcc5cb6",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-5-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -2794,6 +2997,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a03eeecf-154a-308d-9317-5688e62531b1",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-6-expanded",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -2812,6 +3016,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "84fd7001-6694-3ea0-871a-0a956c18f611",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -2830,6 +3035,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d9f12e82-421e-3ff3-ad9f-67d69ee1e1ea",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -2848,6 +3054,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cb7439c8-f552-30e0-bfb5-7ab6e1aa89ae",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-9-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -2866,6 +3073,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "becd54fd-2482-3a80-ad82-fed9a71e28ba",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-10-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -2884,6 +3092,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "329586a3-6984-3c9a-b0ad-ca23606d862a",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-11-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -2902,6 +3111,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "462db6d7-7fa0-3769-8ccc-28555d719d98",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-13-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -2920,6 +3130,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f715896f-75f6-3013-ae99-06b63c52f667",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-14-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -2938,6 +3149,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "71d44cd7-c839-33b9-8ae4-19699ce04c53",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-15-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -2956,6 +3168,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "12267a9e-0b93-3570-b7a4-e44975370b15",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-16-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -2974,6 +3187,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "98b6607d-f3e3-3f15-99bd-f389bc54c6c9",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-17-expanded",
           "objective": "goal3",
           "itemType": "short_reading"
         },
@@ -2992,6 +3206,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "616fbc29-da4b-362a-a2d4-b1c8b239df5f",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-18-expanded",
           "objective": "goal1",
           "itemType": "medium_reading"
         },
@@ -3010,6 +3225,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bad10d01-232d-383d-9b3a-3a4f814b5c81",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-19-expanded",
           "objective": "goal2",
           "itemType": "information_retrieval"
         },
@@ -3028,6 +3244,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5a43f663-14e7-3c9b-944a-1dfcc8d296e0",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-21-expanded",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -3046,6 +3263,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4138baa3-2828-31c8-8faa-e85ac4040ef8",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-22-expanded",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -3064,6 +3282,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e51dade7-b7db-39cc-89b3-d4f8cce16e1a",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -3082,6 +3301,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7b42fe86-1b48-3479-a537-6fcb16ed48bf",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-jlpt-r2-24-expanded",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -3100,6 +3320,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0a2bf6c5-b02e-3144-8e99-da248bb0b9e9",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -3118,6 +3339,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3bf5d505-bd6d-3c20-a600-21ecdbabba5b",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -3136,6 +3358,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "583fb59a-1219-3679-b6c0-8689af69f587",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-vocabulary-3",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -3154,6 +3377,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "84a12d88-9a48-334a-8b63-cb513621f9ea",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -3172,6 +3396,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2a9e278c-4c3e-3667-ab71-43b91b0f8408",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -3190,6 +3415,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fd0f11cd-f4d3-3a17-9602-1a28f9b47083",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-1",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -3208,6 +3434,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "99792c86-221e-3abb-a773-2b34906d7a50",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-2",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -3226,6 +3453,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a7c13d1f-0fec-3ebd-a3e1-96f82f0482b8",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-3",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -3244,6 +3472,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "48472212-35a3-3d17-b218-25c56015c183",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-4",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -3262,6 +3491,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "95350cb0-d5d4-3357-99c9-dc86e022f233",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-5",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -3280,6 +3510,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "12c65058-aa67-3af8-8825-a76b2eee4104",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-6",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -3298,6 +3529,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b51d400e-91dc-3ea2-9af9-0af464efaeac",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -3322,6 +3554,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "292348ba-9b72-3b95-9536-1c0d418a954a",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-8",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -3346,6 +3579,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f44f46bd-e38b-3b2b-bbaf-9cedda72ae2a",
         "form": "A",
         "expectedMeta": {
+          "key": "b06-a-expanded-listening-9",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -3373,6 +3607,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a8e98b9e-ccf3-3d3a-b60f-365d1c343e26",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -3391,6 +3626,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7c60009d-37f7-339b-bd5a-c1335a30a581",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -3409,6 +3645,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a17fd72f-1f42-3ed7-ae3a-742b003e9425",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -3427,6 +3664,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4cf057a2-d2e0-37b4-bb44-f0d66382c698",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-4-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -3449,6 +3687,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7be20925-c5ce-3685-bf60-7c296bfa23c4",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-5-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -3467,6 +3706,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a57632ad-fa47-36bb-b9b0-6ce0c01c2125",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-6-expanded",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -3485,6 +3725,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "61d2d9a3-661f-3852-b158-86c3fdf73da8",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -3503,6 +3744,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5cab6be9-d603-3dc8-afae-b7fbf851bd22",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-8-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -3521,6 +3763,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "45e07d5c-83d1-397b-b02b-d20adfc50aff",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-9-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -3539,6 +3782,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "de9f931c-69c7-3d1a-a8c3-54a0de6fe8ae",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-10-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -3557,6 +3801,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "977b0f82-6a50-39c9-9a3f-429125fe7ba4",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-11-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -3575,6 +3820,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e7a0531d-c6e9-378e-92d5-a1d92d89eee4",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-13-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -3593,6 +3839,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "131b5e3a-52d2-368d-a391-f012a8150188",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-14-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -3611,6 +3858,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "97726aa9-e067-3ff8-b8d8-f02473c58092",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-15-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -3629,6 +3877,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d9907505-3a88-3b50-9bea-f13e6fc2e767",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -3647,6 +3896,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "26756f46-f789-3c56-9fdc-15270498d9f9",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-17-expanded",
           "objective": "goal3",
           "itemType": "short_reading"
         },
@@ -3665,6 +3915,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f7262198-4a5d-3c52-99d0-7680f40c07af",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-18-expanded",
           "objective": "goal2",
           "itemType": "medium_reading"
         },
@@ -3683,6 +3934,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "555d7a78-19a1-3b69-a14f-4e70a60a1832",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-19-expanded",
           "objective": "goal2",
           "itemType": "information_retrieval"
         },
@@ -3701,6 +3953,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4680ef33-8a84-38ae-863c-9a1ceba3a1bc",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-21-expanded",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -3719,6 +3972,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f1e5f929-f36a-3bd8-965a-65449094301e",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-22-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -3737,6 +3991,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b9ee6410-2df9-378c-9f12-a5c0dcf391f7",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-23-expanded",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -3755,6 +4010,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b7069d65-2d5f-36bd-aad1-2665b47dd45f",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-jlpt-r2-24-expanded",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -3773,6 +4029,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "754862ca-c98a-3852-ad57-70715fd666c4",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -3791,6 +4048,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "747d9dbc-681d-3012-ab4a-7f30695a456b",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -3809,6 +4067,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "59dc0ff5-5770-3648-8ae5-9882000d2d3c",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-vocabulary-3",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -3827,6 +4086,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "58360ba7-2f1c-3730-b68d-c92ec354f841",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -3845,6 +4105,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b9a888e9-71d4-338a-9639-f68a8166a39d",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -3863,6 +4124,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6590b3f2-be5c-3f6b-9b1f-727e75fa3bbb",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-1",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -3881,6 +4143,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "10cc5f30-0003-3443-8994-faeb6e59c045",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-2",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -3899,6 +4162,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8799eaad-6e7c-3db7-a37f-76130754ae00",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -3921,6 +4185,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "006333da-efc6-37c8-86b5-d7226a7ed709",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-4",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -3939,6 +4204,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "abe5e17a-18d4-3f42-9a5e-76f25e650916",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-5",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -3957,6 +4223,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a91d3555-590b-3abb-90ae-ae5adccef2bd",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -3975,6 +4242,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "54af2676-6382-3651-aa95-031279be74b3",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-7",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -3999,6 +4267,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "aea00324-053d-38b5-9da9-6ed772ea6d9f",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-8",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -4023,6 +4292,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9224f549-47b3-37d5-9c34-b0a0d33302ac",
         "form": "A",
         "expectedMeta": {
+          "key": "b07-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -4050,6 +4320,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e7bc87fe-191d-398c-830b-c807025d81cd",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-1-expanded",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -4068,6 +4339,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "21002a67-0555-3eba-93b2-101dbcff44c7",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-2-expanded",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -4086,6 +4358,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2bac27e2-5d29-3f42-8f0c-2fb1ab430fe7",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-3-expanded",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -4104,6 +4377,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4db842ed-f4b2-3028-aab2-dd5ae3856314",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-4-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -4122,6 +4396,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c6da6d38-8b9b-35a8-932b-4556c3f9a8d8",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-5-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -4144,6 +4419,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "107b9fb5-d0cb-3122-bbfd-0c729323cc7b",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-6-expanded",
           "objective": "goal1",
           "itemType": "paraphrase"
         },
@@ -4162,6 +4438,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "eca051a9-bd06-33c9-a67d-feef9bd92c7e",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -4180,6 +4457,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b2e7877d-61c5-37ee-b4d1-19cfad9a438b",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -4198,6 +4476,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "07855472-c6d8-38b0-9773-1a0c6fb5fc6e",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-9-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -4216,6 +4495,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3b2e3bf5-b64d-33d4-99fe-e43f8ec69abc",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-10-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -4234,6 +4514,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1a424d35-e300-34a2-a970-717467cc31df",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -4252,6 +4533,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "293e4546-c923-3704-ab5f-a875286b7d60",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-13-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -4270,6 +4552,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b9a31f25-5b7d-358f-8463-5850df38c496",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-14-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -4288,6 +4571,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c6d2a2e8-788a-3291-b290-e1ac12c3aa2a",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-15-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -4306,6 +4590,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "15f0cd60-0160-3baa-a437-3c852d459fe7",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-16-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -4324,6 +4609,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "75c26fdf-b0fe-30fe-b02e-f4eb920d6de1",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-17-expanded",
           "objective": "goal2",
           "itemType": "short_reading"
         },
@@ -4342,6 +4628,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "750352ba-620d-364d-b431-df1720b5f1dc",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-18-expanded",
           "objective": "goal2",
           "itemType": "medium_reading"
         },
@@ -4360,6 +4647,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b58527bc-eb4e-3444-a093-2aec3ff427a8",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-19-expanded",
           "objective": "goal1",
           "itemType": "information_retrieval"
         },
@@ -4378,6 +4666,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "79811d18-db2c-3a36-a276-e2b88a61eea2",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -4396,6 +4685,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "02397d3f-f18a-366a-be02-5aad0d87435a",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-22-expanded",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -4414,8 +4704,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e6eef77c-9c70-3082-86ea-e0ba88335300",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-23-expanded",
           "objective": "goal3",
-          "itemType": "verbal_expression"
+          "itemType": "verbal_expression",
+          "distractorReasons": [
+            "Lokasi bank di sebelah sekolah.",
+            "“がっこうの なかです。” tidak sesuai konteks. Lokasi bank di sebelah sekolah.",
+            "“がっこうの うしろです。” tidak sesuai konteks. Lokasi bank di sebelah sekolah."
+          ],
+          "spokenChoices": [
+            "がっこうの となりです。",
+            "がっこうの なかです。",
+            "がっこうの うしろです。"
+          ]
         },
         "revision": {
           "fields": {
@@ -4493,6 +4794,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a58f6659-cd57-30a0-b6d9-8bdf92479750",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-jlpt-r2-24-expanded",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -4511,6 +4813,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8ebcf797-c27e-346f-8721-c0d414c49aec",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -4529,6 +4832,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0f58bdcc-8849-32bc-8d92-37ed824ca1c0",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -4547,6 +4851,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7932f5ae-7e03-389c-a194-d53d25163569",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-vocabulary-3",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -4565,6 +4870,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3026393c-98c3-3ddb-8a71-6038255a89bf",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -4583,6 +4889,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2546e6c3-a1b3-309d-915c-664e48f8a588",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -4601,6 +4908,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e61f83a7-474a-3e4f-9d39-be76096aaad7",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-1",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -4619,6 +4927,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cadc1c44-979f-3d44-8c58-1e43153a5a17",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-2",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -4637,6 +4946,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c3b19252-57f9-392d-a6dd-b49711c0e1e5",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -4655,6 +4965,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1d0cb1c9-82de-38f7-8214-9dfac4e2cdc6",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-4",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -4673,6 +4984,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ce571aab-2604-3a7a-9f23-6e0fa343fc1f",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-5",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -4691,6 +5003,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5022734f-a03d-3ebf-8575-2e6678899fe8",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-6",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -4709,6 +5022,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ebe31a71-5805-3df0-9795-7af5612a9bf4",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -4733,6 +5047,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f0219bcc-6f40-3862-9d1b-76053395707c",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-8",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -4757,6 +5072,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4e861ac2-498d-3826-bc03-53e1ecde6ec9",
         "form": "A",
         "expectedMeta": {
+          "key": "b08-a-expanded-listening-9",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -4784,6 +5100,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "23b9ec13-dc2e-3ceb-abab-5039b0b5c31c",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -4802,6 +5119,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "48437292-b26c-31f7-b66b-12baea3f4e03",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -4820,6 +5138,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "623146af-b937-325d-b85a-55a7319bd5e4",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -4838,6 +5157,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ca33eaf0-ba71-3556-9f12-b50e0ef6ac5e",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-4-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -4856,6 +5176,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "65cfa9cc-92fd-335a-966b-8ac6827c5db3",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-5-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -4874,6 +5195,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7885a2f3-3693-3a63-85fc-eb2383740f5b",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-6-expanded",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -4892,8 +5214,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b00a2632-30f5-3b76-b77b-d53783a0bf61",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-7-expanded",
           "objective": "goal1",
-          "itemType": "grammar_form"
+          "itemType": "grammar_form",
+          "distractorReasons": [
+            "“と” tidak sesuai konteks. へ menandai tujuan.",
+            "へ menandai tujuan.",
+            "“で” tidak sesuai konteks. へ menandai tujuan.",
+            "“を” tidak sesuai konteks. へ menandai tujuan."
+          ]
         },
         "revision": {
           "fields": {
@@ -4978,6 +5307,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4c2e073a-47bf-3b56-9cfb-45636e759439",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-8-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -4996,6 +5326,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e7e7eefd-ff2e-3f33-9571-67566f45114a",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-9-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -5014,6 +5345,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "38f866e4-02b3-377f-99fd-19b1c1dc229e",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-10-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -5032,6 +5364,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "80d2a275-d8da-3d5b-9676-284c9e1077fb",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-11-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -5050,6 +5383,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "eea46149-8940-34e9-93c8-0abb7e976bbf",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-13-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -5068,6 +5402,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2f66c9fd-95d3-35ac-bcc6-0c14f4f51cd5",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-14-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -5086,6 +5421,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "73376c7c-7e8b-388a-8694-2484d9dd2b70",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-15-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -5104,6 +5440,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c95bf9f2-ca46-34c7-8aaa-f6379c434bc4",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -5122,6 +5459,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7a169731-6876-3aa2-9a84-ef93ac0e4b86",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-17-expanded",
           "objective": "goal2",
           "itemType": "short_reading"
         },
@@ -5140,6 +5478,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ce428a25-0199-3b8d-b05d-695054c886ee",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-18-expanded",
           "objective": "goal2",
           "itemType": "medium_reading"
         },
@@ -5162,6 +5501,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8ecb0b61-5528-318f-9a38-eed687eb0533",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-19-expanded",
           "objective": "goal3",
           "itemType": "information_retrieval"
         },
@@ -5180,6 +5520,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9734f661-d938-309b-ba36-b43bbce33696",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -5198,6 +5539,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e81b6daf-8fca-376f-b97b-c1f0bcbe46f8",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-22-expanded",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -5216,6 +5558,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "afc0c23f-bf47-3105-b0cf-c0ebaff65614",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -5234,6 +5577,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "65d5082c-1510-3b50-98bd-093ffebcd107",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-jlpt-r2-24-expanded",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -5252,6 +5596,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "07215228-41a4-3c66-9740-ccf2573c75c7",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -5270,6 +5615,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "dcc19ea3-1c97-3588-96cf-0970afe1ff8f",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -5288,6 +5634,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1a987522-0cd2-36a4-8d37-74b76fafe2cd",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-vocabulary-3",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -5306,6 +5653,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "66680099-4c1a-3f46-94f0-0c8f0ec3129c",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -5324,6 +5672,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3c424100-42c8-36ff-afe9-1c2315b1f1ee",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -5342,6 +5691,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0ab89f57-52e9-3950-8d30-624adebf597e",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-1",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -5360,6 +5710,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0454748c-0b3a-3547-863d-935882f2115f",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-2",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -5378,6 +5729,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9e8b238e-38b3-35ed-a837-ff105d5ce492",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -5396,6 +5748,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a4ccc0b3-012b-35e1-9457-906e19f53ddf",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-4",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -5414,6 +5767,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "da25e0a9-5a46-30dd-b4b3-59cc2af2bc40",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-5",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -5432,6 +5786,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9d84baaa-fad5-39fe-b5ed-226b765a6254",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -5450,8 +5805,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a8352f89-8db6-3b5c-9485-5e7145938166",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-7",
           "objective": "goal1",
-          "itemType": "verbal_expression"
+          "itemType": "verbal_expression",
+          "distractorReasons": [
+            "Ini menyatakan kembali dari sekolah, bukan datang ke sekolah.",
+            "Ini menyatakan kembali ke rumah, bertentangan dengan tujuan sekolah.",
+            "きます menyatakan datang menuju sekolah tempat A berada; dua pilihan lain mengubah arah gerak."
+          ],
+          "spokenChoices": [
+            "Bさんは あした この がっこうから かえります。",
+            "Bさんは あした うちへ かえります。",
+            "Bさんは あした この がっこうへ きます。"
+          ]
         },
         "revision": {
           "fields": {
@@ -5533,6 +5899,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ddb55e3e-7341-30cb-a400-455ab79d5868",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-8",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -5557,6 +5924,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7add2c11-3683-35fb-bafa-bc2bfc36d8b8",
         "form": "A",
         "expectedMeta": {
+          "key": "b09-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -5584,6 +5952,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0db059cf-ba99-3e22-b559-cb7651b15ec5",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -5602,6 +5971,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7f4e8ed1-52c1-3c9a-92d5-b1c1017f6358",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -5620,6 +5990,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f9c15b18-9313-3c4a-8d6b-a9ea573ab350",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -5638,6 +6009,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "acd135b0-629b-3f3b-8a20-d7206912d88c",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -5656,6 +6028,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2a33bb59-c0d3-32ad-ba6a-34ed35f6b442",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-5-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -5674,6 +6047,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "324c2d3f-9039-3063-a6cc-4836beb310bc",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-6-expanded",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -5692,6 +6066,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8a785ba3-2de3-3c9c-8228-fc55df2617e1",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -5710,6 +6085,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ac999e28-e8b3-3875-b706-ee7987fe9f20",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-8-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -5728,6 +6104,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c4b2ecf5-de94-325f-885e-c541cb03bede",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-9-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -5746,6 +6123,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "986160fe-4c38-3acf-b196-50b0d35bd0d7",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-10-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -5764,6 +6142,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f016f0a7-af2a-3fb8-b875-99cd3c0f41b0",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-11-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -5782,6 +6161,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "035f09b5-d2f8-3474-bb89-992d398ab1b9",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-13-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -5800,6 +6180,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "815d2f7e-1600-34e3-9f81-1d7ede9eeb52",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-14-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -5818,6 +6199,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1cd0983d-0942-3d76-a239-86e0f62eb899",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-15-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -5836,6 +6218,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "015e005a-484e-3547-b4bc-15361f488ec5",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -5854,6 +6237,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "99c8556b-819c-3cc1-bb4a-5727e2a1511d",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-17-expanded",
           "objective": "goal1",
           "itemType": "short_reading"
         },
@@ -5872,8 +6256,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e5782d33-fdc6-3012-b797-43f59c8e2f40",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-18-expanded",
           "objective": "goal2",
-          "itemType": "medium_reading"
+          "itemType": "medium_reading",
+          "distractorReasons": [
+            "“ともだちの うち” tidak sesuai konteks. Minggu belajar di rumah, bukan tempat rutin hari lain.",
+            "Minggu belajar di rumah, bukan tempat rutin hari lain.",
+            "“がっこう” tidak sesuai konteks. Minggu belajar di rumah, bukan tempat rutin hari lain.",
+            "“としょかん” tidak sesuai konteks. Minggu belajar di rumah, bukan tempat rutin hari lain."
+          ]
         },
         "revision": {
           "fields": {
@@ -5960,6 +6351,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4ff1fb67-0d38-3a79-81d3-49a594ab18f2",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-19-expanded",
           "objective": "goal2",
           "itemType": "information_retrieval"
         },
@@ -5978,6 +6370,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e104168e-b40a-36a8-8cf9-47f959737046",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -5996,6 +6389,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ca1e18f2-157e-3fdb-926f-f1a048d7b0b6",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-22-expanded",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -6014,6 +6408,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5666c2fa-cb6f-30dd-9571-b1c677510329",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-23-expanded",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -6032,6 +6427,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8bb34fee-f0ef-3a2e-be3c-15dcdb0b23ba",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-jlpt-r2-24-expanded",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -6050,6 +6446,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "730bac43-8cf5-33fd-a36d-6da48fb35b00",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -6068,6 +6465,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4646b629-c8bd-30d3-96a6-687ff1734c1a",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -6086,6 +6484,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e7f0ce6e-d192-3a84-b747-8552d00bdac8",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-vocabulary-3",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -6104,8 +6503,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "85790785-0889-36fc-af0c-8dbe20ddf9d9",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-vocabulary-4",
           "objective": "goal2",
-          "itemType": "context_vocabulary"
+          "itemType": "context_vocabulary",
+          "distractorReasons": [
+            "コーヒー adalah minuman, bukan media menonton berita.",
+            "パン adalah makanan, bukan media menonton berita.",
+            "おちゃ adalah minuman, bukan media menonton berita.",
+            "テレビ cocok dengan menonton berita."
+          ]
         },
         "revision": {
           "fields": {
@@ -6188,6 +6594,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "873314fc-2536-3965-9780-a047a6c76382",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -6206,6 +6613,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5104507c-4d90-3cb9-9039-ab361df21f2f",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-1",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -6224,6 +6632,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c3aeb45b-666a-3b1f-b82b-02f3d72986c0",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-2",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -6242,6 +6651,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b3b51a04-8c61-33dd-94ae-a43263a94b01",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -6260,6 +6670,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ece41a85-b507-3023-b1a3-60be48a8f4fc",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-4",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -6278,6 +6689,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fac044fc-e9dd-36f9-b1f2-c528e130381a",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-5",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -6296,6 +6708,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a3aa6b72-7fc2-34a3-bb48-0d0a567c9aa2",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-6",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -6314,6 +6727,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "71fc4860-f8be-30ac-87ac-02d0a7bcddfd",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -6338,6 +6752,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a5a8b7a1-269f-3c09-ab8d-ef7035aa31a9",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-8",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -6362,6 +6777,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "26938fe3-2f63-3e09-ab26-b9e4eb5c36ff",
         "form": "A",
         "expectedMeta": {
+          "key": "b10-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -6389,6 +6805,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2a4c38e3-0dc8-360b-8ff7-833393a3b100",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -6407,6 +6824,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2fe21851-7ebd-346e-b7ff-30a8119c9a8f",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-2-expanded",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -6425,6 +6843,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ae86685a-3796-375b-a0dd-8428941f11e4",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -6443,6 +6862,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "900016a9-5a3e-3235-884f-d39e0a6508e0",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -6461,6 +6881,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "da1429ec-50ea-34c6-a7d2-e9f1be497f84",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-5-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -6479,6 +6900,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "611aa56e-45ee-3575-b334-b4b5f48201b7",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-6-expanded",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -6497,6 +6919,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1b41695f-ece8-36d1-afe5-c638fb18659e",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -6515,6 +6938,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c6c85585-6a25-3f05-a8a1-29bac493d461",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-8-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -6533,6 +6957,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c6d4a280-7368-36ef-9c08-ef0dab90d298",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-9-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -6551,6 +6976,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ce55828b-00ad-3d5a-9e51-9eb97afded12",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-10-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -6569,6 +6995,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c0736a1a-a3f9-393c-b2cb-7b1f562b8abf",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-11-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -6587,8 +7014,22 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "dd67a1b1-3043-3d26-8247-408eac748682",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-13-expanded",
           "objective": "goal2",
-          "itemType": "sentence_composition"
+          "itemType": "sentence_composition",
+          "ordered": [
+            "がくせい",
+            "が",
+            "さんにん",
+            "います"
+          ],
+          "starPosition": 2,
+          "distractorReasons": [
+            "“います” tidak sesuai konteks. Urutan: へやに がくせい が さんにん います 。 Posisi ★ adalah さんにん.",
+            "Urutan: へやに がくせい が さんにん います 。 Posisi ★ adalah さんにん.",
+            "“がくせい” tidak sesuai konteks. Urutan: へやに がくせい が さんにん います 。 Posisi ★ adalah さんにん.",
+            "“が” tidak sesuai konteks. Urutan: へやに がくせい が さんにん います 。 Posisi ★ adalah さんにん."
+          ]
         },
         "revision": {
           "fields": {
@@ -6680,6 +7121,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f78d6574-aa73-3e16-b5d7-3c56b5993a00",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-14-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -6698,6 +7140,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4feb97dc-1b79-31b4-81b0-2ac428001a6e",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-15-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -6716,6 +7159,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "48fa9cf1-0d51-3c62-a851-38987d421ce2",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -6734,6 +7178,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "af883fa8-5021-30f5-9b4a-6632e6bfa10d",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-17-expanded",
           "objective": "goal3",
           "itemType": "short_reading"
         },
@@ -6752,6 +7197,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b46a7d61-cb21-3c7f-a340-d5c607ffbb7b",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-18-expanded",
           "objective": "goal2",
           "itemType": "medium_reading"
         },
@@ -6770,6 +7216,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7fa4c4d8-6eeb-3881-bb8c-2b28c9ee44b9",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-19-expanded",
           "objective": "goal3",
           "itemType": "information_retrieval"
         },
@@ -6788,6 +7235,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ad52c69d-9c0e-3073-b779-6348f9fca962",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-21-expanded",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -6806,6 +7254,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2b420de2-e2a4-334b-8c25-cc9da5774ca4",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-22-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -6824,6 +7273,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "525bae80-dd2e-3833-a74d-45edcf9377b5",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -6842,6 +7292,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "56e2bbae-48b6-3c1d-ab09-0f4d70365e96",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-jlpt-r2-24-expanded",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -6860,6 +7311,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d7ed0caf-8ff5-3d8f-9cda-f19d1c9400d6",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -6878,6 +7330,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0164ae31-3cdd-3e34-883f-c2c7baa82b79",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-vocabulary-2",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -6896,6 +7349,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "44392731-583e-3247-833f-798c1497c496",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-vocabulary-3",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -6914,6 +7368,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "be0ea135-be86-3025-b8ee-49151d975897",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-vocabulary-4",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -6932,6 +7387,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cd46365f-1789-3b1e-a374-c24296945fe7",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-vocabulary-5",
           "objective": "goal1",
           "itemType": "paraphrase"
         },
@@ -6950,6 +7406,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b072616d-5399-3ac4-b419-c90d807ff51a",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-1",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -6968,6 +7425,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "103c8d31-4c9a-3c30-88fd-f575de69d918",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-2",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -6986,6 +7444,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e3d37f58-4589-37b0-8168-5de31a345186",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -7004,6 +7463,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f2bedf5f-82fa-36c3-a60a-264b9c0e539c",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-4",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -7022,6 +7482,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "46398d9d-2396-3fc5-be80-57ee9e715003",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-5",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -7040,6 +7501,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "abcf2b4a-615a-367f-ae79-f863acf59f5c",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -7058,6 +7520,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "915fe408-9b48-3e91-99c5-a2742427fdba",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-7",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -7082,6 +7545,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3fe3029a-7c8c-30e3-b0d2-9c467189db5e",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-8",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -7106,6 +7570,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ffad6866-cb11-348d-ba18-b7d4df3a0251",
         "form": "A",
         "expectedMeta": {
+          "key": "b11-a-expanded-listening-9",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -7133,6 +7598,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "92157183-a54a-3027-a8c9-3d5615fb306f",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -7151,6 +7617,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fb69801e-997b-309c-aed5-3c499ab2fc84",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -7169,6 +7636,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a5060b0f-3689-316b-affd-be7fd2803759",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -7187,6 +7655,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f218fcdd-417b-3e78-8716-d4d49690ac6c",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-4-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -7205,6 +7674,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8006c099-4cea-3ba2-b3e4-d3edd28451ef",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-5-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -7223,6 +7693,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bc104fec-1650-3c2f-94dc-67ace286515c",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-6-expanded",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -7241,6 +7712,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c59b1316-8bf3-3cbd-8228-4d704304ccdc",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -7259,6 +7731,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1a119f66-36eb-347b-9e62-e5c83379cf80",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -7277,8 +7750,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "16b71ef0-74cd-3b8c-9ec2-702b8c6eb72e",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-9-expanded",
           "objective": "goal1",
-          "itemType": "grammar_form"
+          "itemType": "grammar_form",
+          "distractorReasons": [
+            "かいます menjadi かって.",
+            "“かいて” tidak sesuai konteks. かいます menjadi かって.",
+            "“かいで” tidak sesuai konteks. かいます menjadi かって.",
+            "“かうて” tidak sesuai konteks. かいます menjadi かって."
+          ]
         },
         "revision": {
           "fields": {
@@ -7363,8 +7843,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6d033664-b62b-3717-b9ea-bd9ce09fd264",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-10-expanded",
           "objective": "goal1",
-          "itemType": "grammar_form"
+          "itemType": "grammar_form",
+          "distractorReasons": [
+            "“はなって” tidak sesuai konteks. はなします menjadi はなして.",
+            "“はなんで” tidak sesuai konteks. はなします menjadi はなして.",
+            "“はないて” tidak sesuai konteks. はなします menjadi はなして.",
+            "はなします menjadi はなして."
+          ]
         },
         "revision": {
           "fields": {
@@ -7449,6 +7936,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6cb597c0-f4b4-3ab6-a8b2-22723d688e09",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-11-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -7467,6 +7955,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fe3b6285-6f5f-3fcd-9d2e-d70cfb99de71",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-13-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -7485,6 +7974,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ffb1e19f-a6cd-3c7c-bc17-eafbacd86d68",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-14-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -7503,6 +7993,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "441a5b3e-9a7f-3dbc-aa54-534305507a82",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-15-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -7521,6 +8012,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3ad7026b-5a2d-3c8c-a8f2-1ab35c5635aa",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-16-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -7539,6 +8031,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "40b40eec-b5f4-3682-b89a-c7bedfcad7d8",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-17-expanded",
           "objective": "goal3",
           "itemType": "short_reading"
         },
@@ -7557,8 +8050,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ba1009ca-cf67-337a-a60d-8c357d99028a",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-18-expanded",
           "objective": "goal3",
-          "itemType": "medium_reading"
+          "itemType": "medium_reading",
+          "distractorReasons": [
+            "“おちゃを のみます” tidak sesuai konteks. Membeli buku sebelum makan.",
+            "“うちへ かえります” tidak sesuai konteks. Membeli buku sebelum makan.",
+            "“にほんごを べんきょうします” tidak sesuai konteks. Membeli buku sebelum makan.",
+            "Membeli buku sebelum makan."
+          ]
         },
         "revision": {
           "fields": {
@@ -7646,6 +8146,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "548f02ce-0a42-3d78-987f-3097a363e0cf",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-19-expanded",
           "objective": "goal3",
           "itemType": "information_retrieval"
         },
@@ -7664,6 +8165,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9d72bddd-3c2e-35db-95c0-fdc2a5d22fda",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-21-expanded",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -7682,6 +8184,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bbc3f4ba-8504-36b8-8915-e0996954a556",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-22-expanded",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -7700,6 +8203,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d21b9b1b-4e61-354d-ac5b-13d7cda4e2df",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -7718,6 +8222,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1bf72112-8a87-3e9c-83c6-fb6e61a0a801",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-jlpt-r2-24-expanded",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -7736,6 +8241,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f7d3e66e-75fe-3eed-8bbb-30daa382ef34",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -7754,6 +8260,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4f4d7801-76e0-32b9-99d3-146153d9d77e",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -7772,6 +8279,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7a2f7900-9327-3d79-b626-af7208b01143",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-vocabulary-3",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -7790,6 +8298,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "41031864-ea84-3580-98d4-91c1491f8983",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -7808,8 +8317,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c42a1397-73a4-3a7b-8ae2-ffdb0a34197f",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-vocabulary-5",
           "objective": "goal2",
-          "itemType": "context_vocabulary"
+          "itemType": "context_vocabulary",
+          "distractorReasons": [
+            "すわって berarti duduk dan sesuai dengan lokasi いすに.",
+            "とんで berarti terbang atau melompat dan tidak membentuk kegiatan duduk di kursi.",
+            "およいで berarti berenang dan tidak cocok dengan kursi sebagai lokasi.",
+            "けして berarti mematikan atau menghapus dan membutuhkan objek, bukan いすに."
+          ]
         },
         "revision": {
           "fields": {
@@ -7894,6 +8410,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a56527bd-19ea-37f5-a6f4-0a4faf9d0f20",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-1",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -7912,6 +8429,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "167493c2-ea96-3cdb-8504-1fd69cce1feb",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-2",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -7930,6 +8448,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ac598e6e-3956-35a0-a731-12d375b34363",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-3",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -7948,6 +8467,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "700468f3-4875-383b-b334-5dc809408f9c",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-4",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -7966,6 +8486,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b6f11719-e903-33d1-85ac-74fd37b7fc16",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-5",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -7984,6 +8505,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d009558d-9d8a-3a0a-bb0e-8b12c20ae08e",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -8002,6 +8524,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "916431eb-6dd9-3ab6-90cd-cfa860d9d34d",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-7",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -8026,6 +8549,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9c130a01-3718-36af-9f9b-e0a558430c58",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-8",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -8050,6 +8574,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3ef900e2-5d0f-3c95-a246-af79942d31ed",
         "form": "A",
         "expectedMeta": {
+          "key": "b12-a-expanded-listening-9",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -8077,6 +8602,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8f4a8e50-e095-38cc-8410-5975dcc137f3",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -8095,6 +8621,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a87aba95-1d70-308e-ab5f-83725d368a4d",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -8113,6 +8640,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "49c905b5-aa50-3733-a586-28e6fb176d82",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -8131,6 +8659,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c8ac2a2c-02fc-395a-a75f-3899a8f787d1",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -8149,6 +8678,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "025c79cd-a429-3939-9296-7c54ba44ffbf",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-5-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -8167,6 +8697,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e8ed0f7f-461a-38df-865f-a44b09746242",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-6-expanded",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -8185,6 +8716,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3ad42ba9-f22b-3fd5-a38b-7846027c4723",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -8203,6 +8735,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3d4dae97-200e-3489-972b-6b9cb7315124",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -8221,6 +8754,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5327c0e0-8d50-3591-a99d-7102e248ff3f",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-9-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -8239,6 +8773,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e578ff41-e8ac-3a54-b52a-aa043b6f56cf",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-10-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -8257,6 +8792,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c2f44952-c3e8-3ec6-b5c9-170b25ebf8c6",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -8275,6 +8811,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4b01d870-cd88-3ebd-8955-e463fd8e8fb8",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-13-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -8293,6 +8830,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "85c6fcf4-dbff-3453-bc64-930b881336ae",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-14-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -8311,6 +8849,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "50a9ed20-ae95-3999-9ce3-4a705ed1bb3f",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-15-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -8329,6 +8868,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8a2c60f9-339e-36b2-8706-893e839f8892",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-16-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -8347,6 +8887,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c54241cb-c167-3f72-b225-2c3dc56eef05",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-17-expanded",
           "objective": "goal3",
           "itemType": "short_reading"
         },
@@ -8365,6 +8906,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f37164b4-1e28-3b17-8a8e-c6d4d7042007",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-18-expanded",
           "objective": "goal3",
           "itemType": "medium_reading"
         },
@@ -8383,6 +8925,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "33ba1ed5-21f1-3df4-864c-205f3f8d595e",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-19-expanded",
           "objective": "goal3",
           "itemType": "information_retrieval"
         },
@@ -8401,6 +8944,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "98ae86b4-104b-3195-9b5e-af62e9e40fd8",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-21-expanded",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -8419,6 +8963,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e2a507dd-ec8f-38ca-bc29-5017f3bc7425",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-22-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -8437,6 +8982,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "39b64e34-177d-335f-b807-d0f204f58811",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -8455,6 +9001,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3928781d-cd1d-3977-b696-5b5e99435c03",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-jlpt-r2-24-expanded",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -8473,6 +9020,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5d8ebc0c-8926-35ed-9555-04eac39564c3",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -8491,6 +9039,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "904a916d-fb75-366e-849a-22b8f265c13a",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-vocabulary-2",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -8509,6 +9058,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9816894a-06d0-3d32-a62e-db6c51212804",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-vocabulary-3",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -8527,6 +9077,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "eab05448-91c5-3c13-bfbc-6735de5557e8",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-vocabulary-4",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -8545,6 +9096,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5b07df1e-17be-3f31-9569-a04e368ac72c",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -8563,6 +9115,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "92e33467-6e6f-3832-a19d-30f9da94983f",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-1",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -8581,8 +9134,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "48efb0b5-4cd3-36ee-b21d-88128bba2c1a",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-2",
           "objective": "goal1",
-          "itemType": "quick_response"
+          "itemType": "quick_response",
+          "spokenChoices": [
+            "はい、いいですよ。",
+            "いいえ、じしょじゃありません。",
+            "はい、しずかです。"
+          ],
+          "distractorReasons": [
+            "いいですよ menerima permintaan untuk membantu menjelaskan kata.",
+            "Jawaban ini menyangkal identitas sebuah kamus, bukan merespons permintaan bantuan.",
+            "Jawaban ini menyatakan keadaan tenang, bukan kesediaan menjelaskan kata."
+          ]
         },
         "revision": {
           "fields": {
@@ -8658,6 +9222,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fd9c55cf-e672-3d9b-bffe-5fa583eb5f9d",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-3",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -8676,6 +9241,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "638a176a-47c8-3991-b0cf-597ccec6cd2f",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-4",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -8694,8 +9260,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "39909441-3418-35bc-8024-832bd4375f66",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-5",
           "objective": "goal2",
-          "itemType": "key_points"
+          "itemType": "key_points",
+          "distractorReasons": [
+            "B secara eksplisit menyangkal membaca saat ini.",
+            "Minum teh tidak disebut sebagai kegiatan siswa.",
+            "B menyatakan siswa menuliskan kata tersebut di buku catatan.",
+            "Menulis di papan tulis adalah kegiatan guru, bukan siswa."
+          ]
         },
         "revision": {
           "fields": {
@@ -8780,6 +9353,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5e5746a2-5eac-3703-bd8c-19ff39deb489",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -8798,6 +9372,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "94b4c133-4077-34e3-92c4-176e1878dbac",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-7",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -8822,6 +9397,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ab7e8e4a-8f9e-3c35-9652-3522ff2166b4",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-8",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -8846,8 +9422,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ee73aa8c-8170-3eda-ade0-598cab06eab8",
         "form": "A",
         "expectedMeta": {
+          "key": "b13-a-expanded-listening-9",
           "objective": "goal2",
-          "itemType": "quick_response"
+          "itemType": "quick_response",
+          "spokenChoices": [
+            "はい、きのうでした。",
+            "いいえ、ペンは あかいです。",
+            "いいえ、どうぞ。"
+          ],
+          "distractorReasons": [
+            "きのうでした membicarakan kemarin dan tidak menjawab keadaan pemakaian sekarang.",
+            "Warna pena tidak menjawab apakah pena sedang dipakai.",
+            "Jawaban menanggapi pertanyaan pemakaian sekarang dan mempersilakan memakai pena."
+          ]
         },
         "revision": {
           "fields": {
@@ -8932,8 +9519,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fa481388-7098-3719-bd76-fc2849914e38",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-1-expanded",
           "objective": "goal1",
-          "itemType": "kanji_reading"
+          "itemType": "kanji_reading",
+          "distractorReasons": [
+            "“かって” tidak sesuai konteks. 立って dibaca たって.",
+            "“とって” tidak sesuai konteks. 立って dibaca たって.",
+            "立って dibaca たって.",
+            "“まって” tidak sesuai konteks. 立って dibaca たって."
+          ]
         },
         "revision": {
           "fields": {
@@ -9018,6 +9612,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "338b60d4-d1f0-37e3-8c4e-c90cd2d7f6eb",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -9036,6 +9631,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c2847f62-3607-388e-af2f-db002a9020f9",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -9054,6 +9650,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e3556a32-d7fb-3cf4-b5d2-a707f799c3ff",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -9072,8 +9669,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a310e502-678d-3e72-9b4e-eb3d21b86034",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-5-expanded",
           "objective": "goal3",
-          "itemType": "context_vocabulary"
+          "itemType": "context_vocabulary",
+          "distractorReasons": [
+            "“かいている” tidak sesuai konteks. Jawaban いいえ terhadap kewajiban mengisi nama cocok dengan tidak perlu.",
+            "“かかないて” tidak sesuai konteks. Jawaban いいえ terhadap kewajiban mengisi nama cocok dengan tidak perlu.",
+            "Jawaban いいえ terhadap kewajiban mengisi nama cocok dengan tidak perlu.",
+            "“かかなければならない” tidak sesuai konteks. Jawaban いいえ terhadap kewajiban mengisi nama cocok dengan tidak perlu."
+          ]
         },
         "revision": {
           "fields": {
@@ -9158,6 +9762,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9f861ff2-e2ec-37ea-956c-5d64f96cc3ed",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-6-expanded",
           "objective": "goal1",
           "itemType": "paraphrase"
         },
@@ -9176,6 +9781,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "062d1566-00f1-3fec-b12f-0ce448a6e66f",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -9194,6 +9800,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8f4c4adb-b1bc-3e23-81c7-ced395fb6000",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -9212,6 +9819,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d3181b75-1431-35f2-9175-c58b01dbf24b",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-9-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -9230,6 +9838,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7d2b898a-b8e4-30aa-a1c9-d2254264d733",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-10-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -9248,6 +9857,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d9915ae4-53be-3a27-9828-f65c62a437dc",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -9266,6 +9876,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "01d008c9-114f-3a27-9471-835865d623c0",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-13-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -9284,6 +9895,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "48f6f527-0d27-3c43-802c-6e5232ed895b",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-14-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -9302,6 +9914,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4559729d-7e0f-3910-8981-cbab7f07c194",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-15-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -9320,6 +9933,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "023a10e8-4577-359e-a1cd-468f4e79c625",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-16-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -9338,8 +9952,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f4e36448-c312-323d-bc0a-013fc44fb920",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-17-expanded",
           "objective": "goal3",
-          "itemType": "short_reading"
+          "itemType": "short_reading",
+          "distractorReasons": [
+            "“もって こなければ なりません。” tidak sesuai konteks. Kamus tidak perlu dibawa dan tidak boleh dipakai.",
+            "“テストで つかってください。” tidak sesuai konteks. Kamus tidak perlu dibawa dan tidak boleh dipakai.",
+            "Kamus tidak perlu dibawa dan tidak boleh dipakai.",
+            "“つかわなければ なりません。” tidak sesuai konteks. Kamus tidak perlu dibawa dan tidak boleh dipakai."
+          ]
         },
         "revision": {
           "fields": {
@@ -9422,8 +10043,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "30619c11-3d4f-3d3c-a410-ec55907a3693",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-18-expanded",
           "objective": "goal1",
-          "itemType": "medium_reading"
+          "itemType": "medium_reading",
+          "distractorReasons": [
+            "“ともだちと べんきょうしました” tidak sesuai konteks. Penulis beristirahat di rumah kemarin.",
+            "Penulis beristirahat di rumah kemarin.",
+            "“がっこうで テストを しました” tidak sesuai konteks. Penulis beristirahat di rumah kemarin.",
+            "“ほんを よみました” tidak sesuai konteks. Penulis beristirahat di rumah kemarin."
+          ]
         },
         "revision": {
           "fields": {
@@ -9510,6 +10138,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b294d308-9b0b-3e64-8a59-e0e4d4b884c5",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-19-expanded",
           "objective": "goal3",
           "itemType": "information_retrieval"
         },
@@ -9532,8 +10161,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6db02fb2-a056-369d-b7bd-216af32e93d9",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-21-expanded",
           "objective": "goal3",
-          "itemType": "task_comprehension"
+          "itemType": "task_comprehension",
+          "distractorReasons": [
+            "Payung tidak disebut sebagai barang yang akan dibawa.",
+            "Foto tidak disebut sebagai barang yang akan dibawa.",
+            "A secara eksplisit memutuskan membawa catatan dan tidak membawa kamus.",
+            "A menyatakan tidak membawa kamus; ini bukan sekadar kesimpulan dari tidak wajib."
+          ]
         },
         "revision": {
           "fields": {
@@ -9620,6 +10256,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "779d3b5a-4842-300e-af30-8e29499a1a13",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-22-expanded",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -9638,8 +10275,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c1f4cbbf-a409-333f-891c-d5c66cf93390",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-23-expanded",
           "objective": "goal2",
-          "itemType": "verbal_expression"
+          "itemType": "verbal_expression",
+          "spokenChoices": [
+            "ここで たべないでください。",
+            "ここで たべてください。",
+            "ここで たべてもいいです。"
+          ],
+          "distractorReasons": [
+            "Permintaan negatif sesuai larangan makan.",
+            "“ここで たべてください。” tidak sesuai konteks. Permintaan negatif sesuai larangan makan.",
+            "“ここで たべてもいいです。” tidak sesuai konteks. Permintaan negatif sesuai larangan makan."
+          ]
         },
         "revision": {
           "fields": {
@@ -9715,6 +10363,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bce6fe0a-2a91-3430-aff0-2a4dd220abe2",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-jlpt-r2-24-expanded",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -9733,6 +10382,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "06517ce7-5962-380f-bb87-42bfbf558812",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -9751,6 +10401,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "05035fc4-a21f-3bdf-9c3c-ed6d6d37650d",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-vocabulary-2",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -9769,6 +10420,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d8368e95-6f86-303a-8a8d-55e4f762d195",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-vocabulary-3",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -9787,6 +10439,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "062e5772-a94a-39e3-aaa0-56b64d973d83",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-vocabulary-4",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -9805,6 +10458,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7376a15c-05db-35ce-92b6-212ae9f2f2b6",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-vocabulary-5",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -9823,6 +10477,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1a50945d-f64d-3c61-b7f7-b2a5386d314e",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-1",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -9841,6 +10496,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "56dce720-978d-3128-a442-a23f095b492e",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-2",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -9859,6 +10515,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9a2cda04-2530-3b44-8d16-aac1387d63e4",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-3",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -9877,6 +10534,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4ccda587-aad7-3645-92e8-df2e4074c493",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-4",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -9895,6 +10553,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e310d441-fe78-3456-acd5-258ad3553878",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-5",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -9913,6 +10572,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5aaa17bb-babd-3eba-83ca-d0e4b976ab4b",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-6",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -9931,6 +10591,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "75efaa90-cd53-3169-a832-23820a03e045",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -9955,6 +10616,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c27db299-44b3-35ca-b7d8-82fcc8b53516",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-8",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -9979,6 +10641,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "94da400f-ccba-3598-977c-5bf8c3a1550c",
         "form": "A",
         "expectedMeta": {
+          "key": "b14-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -10006,6 +10669,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0fd2c67b-69ce-35f7-9341-7aad448254fb",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -10024,6 +10688,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f6a1c069-0215-3b5a-ae89-499b58ed58f1",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -10042,6 +10707,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cb92e910-4d98-3f1d-b489-9e920d13ae3b",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-3-expanded",
           "objective": "goal2",
           "itemType": "orthography"
         },
@@ -10060,6 +10726,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "67c6457d-e2b7-3412-9483-6a3f89ed1fd4",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-4-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -10078,6 +10745,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "eb85c66c-197d-3a34-83c6-3eaf749ecce9",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-5-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -10096,6 +10764,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6d47ec91-b0d5-3bf8-8718-83d4ff8d9a8f",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-6-expanded",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -10114,6 +10783,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ac541de8-b891-3bb8-b38c-2c26b826e237",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -10132,6 +10802,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "53dd6603-3998-36d4-babb-1969e7d2438c",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -10150,6 +10821,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "adb30a23-3595-3554-8db3-def56edee573",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-9-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -10168,8 +10840,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0f98901b-fa87-3247-b14a-0dda971a98dd",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-10-expanded",
           "objective": "goal2",
-          "itemType": "grammar_form"
+          "itemType": "grammar_form",
+          "distractorReasons": [
+            "にします menandai pilihan.",
+            "“で” tidak sesuai konteks. にします menandai pilihan.",
+            "“を” tidak sesuai konteks. にします menandai pilihan.",
+            "“と” tidak sesuai konteks. にします menandai pilihan."
+          ]
         },
         "revision": {
           "fields": {
@@ -10255,6 +10934,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "565e3f52-530e-3875-a3fc-b78cd144e4af",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -10273,6 +10953,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4561645a-7fce-3912-ae6c-91472aeeb268",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-13-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -10291,6 +10972,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e4024d05-6d91-3972-a969-305fd94c6ef0",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-14-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -10309,6 +10991,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "70b1ce1e-b1e0-3e93-930d-7b889498321c",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-15-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -10327,6 +11010,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "09ded53e-0f1e-3f5c-9028-7036a7583265",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -10345,6 +11029,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "89a63bcc-8a3b-3b34-a0ee-59192daeb741",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-17-expanded",
           "objective": "goal1",
           "itemType": "short_reading"
         },
@@ -10363,8 +11048,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "69936c79-5d00-392f-b917-9a6cd33539fb",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-18-expanded",
           "objective": "goal2",
-          "itemType": "medium_reading"
+          "itemType": "medium_reading",
+          "distractorReasons": [
+            "Pembayaran 1000, total 500, kembalian 500.",
+            "“200えん” tidak sesuai konteks. Pembayaran 1000, total 500, kembalian 500.",
+            "“300えん” tidak sesuai konteks. Pembayaran 1000, total 500, kembalian 500.",
+            "“1000えん” tidak sesuai konteks. Pembayaran 1000, total 500, kembalian 500."
+          ]
         },
         "revision": {
           "fields": {
@@ -10451,6 +11143,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6eb042b7-bb53-39a8-91e0-bcf977ced88e",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-19-expanded",
           "objective": "goal2",
           "itemType": "information_retrieval"
         },
@@ -10469,6 +11162,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "16056cad-92d6-3784-ac4d-70d3847d8ef3",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-21-expanded",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -10487,6 +11181,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4d9693dd-bb5b-3cb1-9353-206501c25ec5",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-22-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -10505,6 +11200,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "886ad3af-1751-305a-9f76-40455b3efdf4",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-23-expanded",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -10523,6 +11219,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b5aca0e7-876b-321d-993e-8519137d8e82",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-jlpt-r2-24-expanded",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -10541,6 +11238,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4bea1956-9602-3434-acfb-b4cd67c17ca9",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -10559,6 +11257,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "16d821a2-ee93-36b4-82ee-a68a6c626017",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -10577,6 +11276,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "27926a74-5bcd-3a2e-81da-6262a2e09568",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-vocabulary-3",
           "objective": "goal1",
           "itemType": "paraphrase"
         },
@@ -10595,6 +11295,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "de601dbd-7fe4-34a1-b556-19826db1a75f",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -10613,6 +11314,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0c4d17c8-8398-3184-a208-ddd73ba348b7",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-vocabulary-5",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -10631,6 +11333,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "54451da1-fbd4-3678-b8da-7be92320c91b",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-1",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -10649,6 +11352,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a3eb3a85-35c2-334a-a538-41735c41106d",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-2",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -10667,6 +11371,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e7cbe1f8-ebc3-3044-9f34-32d11dcf40d0",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-3",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -10685,6 +11390,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c748f753-c018-3be9-b4c0-cb874b839b20",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-4",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -10703,6 +11409,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9ae338e1-ead1-3434-b7a3-e1d116480d89",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-5",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -10721,6 +11428,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f131ca92-9b60-3afb-a7b2-e44b4f5e1738",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-6",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -10739,6 +11447,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8539c0d5-0464-3cc6-b831-f3e567e6178c",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -10763,8 +11472,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "933471da-d759-3653-b176-3056e90493d5",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-8",
           "objective": "goal2",
-          "itemType": "verbal_expression"
+          "itemType": "verbal_expression",
+          "distractorReasons": [
+            "Kopi juga ditolak oleh A, sehingga menambah kopi bertentangan dengan konteks.",
+            "A perlu mengoreksi pelayan: pesanannya hanya roti, tanpa kedua minuman.",
+            "Teh sudah dinyatakan tidak diperlukan; A justru membeli roti."
+          ],
+          "spokenChoices": [
+            "はい、コーヒーも おねがいします。",
+            "いいえ、パンだけ おねがいします。",
+            "はい、おちゃだけ おねがいします。"
+          ]
         },
         "revision": {
           "fields": {
@@ -10844,6 +11564,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3c058819-d5eb-351e-a87a-0003e314ab87",
         "form": "A",
         "expectedMeta": {
+          "key": "b15-a-expanded-listening-9",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -10871,6 +11592,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "38db65d0-283a-380d-9405-80449883f5cb",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -10889,6 +11611,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8c2a317f-3ae5-306b-99ad-020cfce2a09b",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -10907,6 +11630,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "29580e2b-e7ec-39b0-8eee-c92a68fe7c2e",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -10925,6 +11649,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "dfeba524-7a4b-372e-8114-efd81501d0fe",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -10943,6 +11668,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1ab88638-d832-35de-b788-b7a1c1120132",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-5-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -10961,8 +11687,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "97eacb7b-f342-33ac-8f9b-c7bd9a68e5fb",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-6-expanded",
           "objective": "goal3",
-          "itemType": "paraphrase"
+          "itemType": "paraphrase",
+          "distractorReasons": [
+            "Hanya minggu ini bertentangan dengan setiap minggu.",
+            "Hari berubah menjadi Minggu.",
+            "Setiap hari bukan jadwal khusus Sabtu.",
+            "どのしゅうもおなじ mempertahankan jadwal Sabtu pada setiap minggu."
+          ]
         },
         "revision": {
           "fields": {
@@ -11047,6 +11780,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1b875bd6-5a32-3abd-a986-5b05dd6a36e9",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -11065,6 +11799,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bab48b28-81f8-3c7f-9516-1f459adf7e0a",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-8-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -11083,6 +11818,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f51db324-1c3f-3061-9c44-8817ca3c3de3",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-9-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -11101,6 +11837,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "dad9b8dc-ecfa-3354-8a65-307c4f3090dc",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-10-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -11119,6 +11856,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8fdaa017-6deb-3280-b99e-0af42196a9e8",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -11137,6 +11875,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "008f51bb-fcc9-3f90-a62f-44de7d952440",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-13-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -11155,6 +11894,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4e35710c-0f77-3380-860c-05aa19d931d6",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-14-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -11173,6 +11913,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6cfb187b-cf2f-3c71-a77b-a68188888712",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-15-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -11191,6 +11932,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cd220c44-3253-357c-a14c-27a6d109623f",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-16-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -11209,8 +11951,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a386a4c1-8cb7-3983-9962-3d5adef0dc43",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-17-expanded",
           "objective": "goal2",
-          "itemType": "short_reading"
+          "itemType": "short_reading",
+          "distractorReasons": [
+            "Jadwal khusus minggu depan dimulai pukul sepuluh.",
+            "“9じ” tidak sesuai konteks. Jadwal khusus minggu depan dimulai pukul sepuluh.",
+            "“11じ” tidak sesuai konteks. Jadwal khusus minggu depan dimulai pukul sepuluh.",
+            "“12じ” tidak sesuai konteks. Jadwal khusus minggu depan dimulai pukul sepuluh."
+          ]
         },
         "revision": {
           "fields": {
@@ -11295,6 +12044,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3b147b7f-6849-3179-85f3-33aeee465abc",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-18-expanded",
           "objective": "goal2",
           "itemType": "medium_reading"
         },
@@ -11313,6 +12063,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d19f3460-5f54-32ae-9a66-b899f1e4c632",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-19-expanded",
           "objective": "goal1",
           "itemType": "information_retrieval"
         },
@@ -11331,6 +12082,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "931ef19b-ca6a-3836-ba77-a7b6d8900fab",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -11349,6 +12101,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f2f28dac-abc9-3978-a50d-964803d7716b",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-22-expanded",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -11367,6 +12120,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "37a3e8f2-d44b-3082-b4a5-0d9c8c17793e",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-23-expanded",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -11385,6 +12139,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2a429587-aef3-3105-95e4-0d508c318c32",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-jlpt-r2-24-expanded",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -11403,6 +12158,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d026dc1e-50ca-3eec-9e19-9be4b7891dc9",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -11421,6 +12177,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f8a9042e-fd8b-362f-a429-ea3646d7fa55",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-vocabulary-2",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -11439,6 +12196,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4c832a70-a479-389f-8202-82f7bb93c0b2",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-vocabulary-3",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -11457,6 +12215,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e063c6f0-3405-33df-b5fb-faec376b1da8",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-vocabulary-4",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -11475,6 +12234,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4685529b-77a4-316c-afe4-71c0cb48362d",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -11493,8 +12253,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3c50ccc2-1ce4-3920-a4e7-a7c1d184fd71",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-1",
           "objective": "goal3",
-          "itemType": "key_points"
+          "itemType": "key_points",
+          "distractorReasons": [
+            "Pilihan ini menghilangkan Rabu yang rutin dan memasukkan Sabtu yang hanya sekali.",
+            "Pilihan ini menghilangkan Jumat yang rutin dan memasukkan Sabtu yang hanya sekali.",
+            "Sabtu dinyatakan こんしゅうだけ, sehingga tidak termasuk jadwal setiap minggu.",
+            "Rabu dan Jumat adalah jadwal setiap minggu; Sabtu hanya tambahan minggu ini."
+          ]
         },
         "revision": {
           "fields": {
@@ -11579,6 +12346,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e44d0b87-d353-36cf-b833-137ec8021ab1",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-2",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -11597,6 +12365,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0d36b3ba-ef9d-3aa5-bbf8-e9410ce4ab0f",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -11615,6 +12384,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e32fbb6f-e936-38cc-872e-577266ee4b3d",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-4",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -11633,6 +12403,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6c20b1f1-c07e-3060-b4b4-938b81674b9b",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-5",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -11651,6 +12422,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "15342316-e29f-37eb-9345-f20e6fe8836d",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -11669,6 +12441,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f9ba664d-ee7c-3f9c-b469-e06118e6d9d1",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -11693,8 +12466,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a7e522e6-3e02-372d-abad-a3aaa25b84ab",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-8",
           "objective": "goal3",
-          "itemType": "verbal_expression"
+          "itemType": "verbal_expression",
+          "distractorReasons": [
+            "Jawaban mempertahankan dua hari kerja rutin setiap minggu.",
+            "まいにち bertentangan dengan keterangan tidak bekerja pada hari lain.",
+            "Pilihan ini mengubah frekuensi menjadi bulanan dan menghilangkan Kamis."
+          ],
+          "spokenChoices": [
+            "まいしゅう げつようびと もくようびです。",
+            "まいにち はたらきます。",
+            "まいつき げつようびだけです。"
+          ]
         },
         "revision": {
           "fields": {
@@ -11774,6 +12558,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f1f787c1-f6eb-3839-9f79-d49e0a7ff42d",
         "form": "A",
         "expectedMeta": {
+          "key": "b16-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -11801,6 +12586,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b9be0702-5ba1-36cb-93f8-03dedb2b4160",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -11819,6 +12605,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fa8af288-4375-3b8e-9fec-0886060a7f8c",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -11837,6 +12624,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a6132600-fc12-3bdc-8b3f-f0fb3d943277",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -11855,6 +12643,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "97eb0583-c729-3f6b-a1ed-589d7ba7ced9",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-4-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -11873,6 +12662,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c85c5764-1e41-3d4e-9553-2a9c98f2465b",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-5-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -11891,6 +12681,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f6e63718-0559-3a56-a4f5-258b598f62f3",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-6-expanded",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -11909,6 +12700,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "230a077b-f3be-3d22-a048-d4bba6ade19a",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-7-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -11927,6 +12719,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "edec9297-95d8-33f1-ab7c-d306c2f468c3",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-8-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -11945,6 +12738,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f0787261-d290-3f29-a092-adeaf583988a",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-9-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -11963,6 +12757,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d38bd968-572c-316b-beda-b4d2aaed2be2",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-10-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -11981,6 +12776,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0f91a490-bd8d-3bc1-9190-d18644226f80",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-11-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -11999,6 +12795,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c16bbbb1-a0c6-306b-b3ed-3547bf2f98a2",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-13-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -12017,6 +12814,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "39c0d8cc-8140-3745-8562-6ec3ffc7a074",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-14-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -12035,6 +12833,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "270d2152-d4ac-3e34-91a3-157aa68d91e4",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-15-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -12053,6 +12852,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "41f59a1b-b05c-31d4-95cf-e1f36ed4223d",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-16-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -12071,6 +12871,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8d020eca-b215-3466-9694-e9dfad3c0735",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-17-expanded",
           "objective": "goal2",
           "itemType": "short_reading"
         },
@@ -12089,8 +12890,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "91a93719-63a6-3ed1-a5b6-5dcf2f81ab6f",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-18-expanded",
           "objective": "goal2",
-          "itemType": "medium_reading"
+          "itemType": "medium_reading",
+          "distractorReasons": [
+            "“おんがくが きらいです。” tidak sesuai konteks. Anna bisa gitar dan tidak bisa piano.",
+            "“テニスが とても じょうずです。” tidak sesuai konteks. Anna bisa gitar dan tidak bisa piano.",
+            "Anna bisa gitar dan tidak bisa piano.",
+            "“ピアノが できます。” tidak sesuai konteks. Anna bisa gitar dan tidak bisa piano."
+          ]
         },
         "revision": {
           "fields": {
@@ -12175,6 +12983,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c8959ff9-a616-3f56-992f-07c947f9833d",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-19-expanded",
           "objective": "goal3",
           "itemType": "information_retrieval"
         },
@@ -12193,6 +13002,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "720b85a8-09f1-36c1-bc2c-5801e1639a60",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -12211,6 +13021,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b2172740-98ff-36bf-8000-8ccd3abc268c",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-22-expanded",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -12229,6 +13040,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fa481802-80f5-3b52-be12-f35ddc0f3bfb",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -12247,6 +13059,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8b4d568c-e368-30a2-9b7e-f67b12b45189",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-jlpt-r2-24-expanded",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -12265,6 +13078,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d5c00ab7-6c5e-3287-bb24-7965b7fb184b",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -12283,6 +13097,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c0c7a499-a419-38db-a3a8-cbb2e23c962a",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-vocabulary-2",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -12301,6 +13116,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "bf075324-69f2-3a2e-8146-b34c56225ced",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-vocabulary-3",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -12319,6 +13135,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "37070463-a909-3cbd-8821-8d903017727b",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-vocabulary-4",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -12337,8 +13154,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "86a75190-6244-3a13-921c-7f5e897375c0",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-vocabulary-5",
           "objective": "goal3",
-          "itemType": "context_vocabulary"
+          "itemType": "context_vocabulary",
+          "distractorReasons": [
+            "ギター adalah alat musik dan tidak sesuai kegiatan membaca.",
+            "テニス adalah olahraga, bukan benda bacaan pada kalimat ini.",
+            "ピアノ adalah alat musik dan tidak sesuai objek よみます.",
+            "ほん adalah bahan bacaan; buku masak dapat memuat foto."
+          ]
         },
         "revision": {
           "fields": {
@@ -12423,6 +13247,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "92a26a34-b993-3fd5-b05f-15a0985b75df",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-1",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -12441,6 +13266,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fe334470-4a3d-3652-8697-43d0ee892760",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-2",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -12459,6 +13285,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "9ad1f3c2-fc7a-3eed-bb75-decfdce3da24",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -12477,6 +13304,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "90c8cd38-2abd-373d-b8f7-238cd8353148",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-4",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -12495,6 +13323,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "230c3008-c01d-3d8a-bdcb-f77f347bfbca",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-5",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -12513,6 +13342,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "df10cd78-3eab-31ad-aa2d-2b5e7a5744b9",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -12531,6 +13361,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7b7ab5ec-231c-3d36-8fdb-53f2c285f2eb",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-7",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -12555,6 +13386,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2cc7e944-3d61-3227-8534-b4240f1e1f61",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-8",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -12579,8 +13411,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c30379fe-24f7-3bca-b209-7615fb3857b0",
         "form": "A",
         "expectedMeta": {
+          "key": "b17-a-expanded-listening-9",
           "objective": "goal2",
-          "itemType": "quick_response"
+          "itemType": "quick_response",
+          "distractorReasons": [
+            "Pernyataan tentang besok tidak menjawab apakah pembicara bisa bahasa Jepang.",
+            "はい、すこしできます menjawab kemampuan bahasa Jepang secara langsung.",
+            "Harga 300 yen tidak menjawab kemampuan berbahasa."
+          ],
+          "spokenChoices": [
+            "はい、あしたは にほんごです。",
+            "はい、すこし できます。",
+            "はい、にほんごは 300えんです。"
+          ]
         },
         "revision": {
           "fields": {
@@ -12665,6 +13508,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "25894cde-bb0a-3502-bd5f-8d8409147d1a",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -12683,6 +13527,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4f35c846-4697-397e-a6eb-fcca49c8ed97",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -12701,6 +13546,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0d079df2-85fe-3baa-b6db-6996d05b825c",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -12719,6 +13565,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "47056617-ac70-36d4-990e-7d33b711b050",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -12737,6 +13584,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a27dbd5c-3c27-3a5c-8660-488c57409fc2",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-5-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -12755,6 +13603,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "dd7e2d25-58f6-3a05-83cb-f91df7d6901b",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-6-expanded",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -12773,6 +13622,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6effc540-5c93-37bd-bd55-2fddc3957e08",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -12791,6 +13641,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "794dbd37-9eea-3efb-b339-fc0c46f6336a",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -12809,6 +13660,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8bc4747e-f457-3f45-8387-2a66431c1a88",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-9-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -12827,6 +13679,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3c5d72a0-951e-3e17-ab55-16bbe71aee0f",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-10-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -12845,6 +13698,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f7eb5da7-f2b2-36d5-a131-d09f1a601c48",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -12863,6 +13717,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "472f0e71-3f4f-31dc-9eaf-e996e009dadb",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-13-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -12881,6 +13736,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b12bbd11-cdcd-3b33-8585-b8d5fe24b7fb",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-14-expanded",
           "objective": "goal3",
           "itemType": "sentence_composition"
         },
@@ -12899,6 +13755,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "172e2268-d10d-39d9-ae53-6deaebec3be3",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-15-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -12917,6 +13774,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7c95d5ba-39e5-30a7-82aa-60662da6e251",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-16-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -12935,6 +13793,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2c2b36af-bc09-3cfe-83ae-9e20181143d1",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-17-expanded",
           "objective": "goal3",
           "itemType": "short_reading"
         },
@@ -12953,6 +13812,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c32baff8-86ca-33f4-9e0a-8536da713251",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-18-expanded",
           "objective": "goal1",
           "itemType": "medium_reading"
         },
@@ -12971,6 +13831,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "973be52c-5215-3466-9513-6660780b052b",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-19-expanded",
           "objective": "goal3",
           "itemType": "information_retrieval"
         },
@@ -12989,6 +13850,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "165bf0f4-b32d-33bb-87f5-1f592b8712b8",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-21-expanded",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -13007,6 +13869,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5ada00b9-9fba-35ce-8aa8-9f2e9c2faaf6",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-22-expanded",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -13025,6 +13888,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1b212ee9-27e5-3631-a480-da49ac103ada",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-23-expanded",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -13043,6 +13907,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f6b42445-8475-3967-b2b9-284d492c987c",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-jlpt-r2-24-expanded",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -13061,6 +13926,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "43eea569-0d54-3e37-8f93-6aee7abb9df7",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -13079,6 +13945,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "414e4c36-6a20-324d-b975-16838f61baf9",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-vocabulary-2",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -13097,6 +13964,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ba7eaffc-4dfd-3a96-9779-754540426188",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-vocabulary-3",
           "objective": "goal2",
           "itemType": "paraphrase"
         },
@@ -13115,6 +13983,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "409eb273-9497-3c21-9d1d-7590f616cefa",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-vocabulary-4",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -13133,6 +14002,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "3ee9b82e-bc59-3750-8b68-318718110701",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-vocabulary-5",
           "objective": "goal3",
           "itemType": "paraphrase"
         },
@@ -13151,6 +14021,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "66c33133-5bbc-3b9d-bb24-7a7c784f7ff6",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-1",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -13169,6 +14040,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "df411982-528d-3b4d-a848-b421babf2a56",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-2",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -13187,6 +14059,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "0c9185f2-9471-3179-90c9-e2070f21541f",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-3",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -13205,8 +14078,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1bc86268-571d-35de-8517-c186f15d4fae",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-4",
           "objective": "goal1",
-          "itemType": "task_comprehension"
+          "itemType": "task_comprehension",
+          "distractorReasons": [
+            "Rute belakang sekolah tidak disebut sebagai pilihan.",
+            "Rute tepi sungai tidak disebut dalam percakapan.",
+            "A memilih rute depan stasiun karena 10 menit lebih singkat daripada 15 menit.",
+            "Rute depan toko 15 menit lebih lama dan bukan pilihan A."
+          ]
         },
         "revision": {
           "fields": {
@@ -13291,8 +14171,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c7634ad0-e860-37fc-8c07-1e1024c48453",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-5",
           "objective": "goal3",
-          "itemType": "key_points"
+          "itemType": "key_points",
+          "distractorReasons": [
+            "Berat ketiga kotak berbeda, yaitu 2, 4, dan 3 kg.",
+            "Kotak biru 4 kg adalah yang terberat dibandingkan 2 dan 3 kg.",
+            "Kotak merah 2 kg justru paling ringan.",
+            "Kotak putih 3 kg masih lebih ringan daripada biru 4 kg."
+          ]
         },
         "revision": {
           "fields": {
@@ -13377,6 +14264,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "270cf8ec-c9d8-30df-aba6-39b4028f94c2",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -13395,6 +14283,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c29c64a2-d90d-39ab-9be5-30cb064b0c44",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-7",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -13419,6 +14308,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "caae23b5-a229-3d40-bec1-737fb0771a4c",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-8",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -13443,6 +14333,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "03e6288e-122e-36ac-bbb4-d4afb552ae3d",
         "form": "A",
         "expectedMeta": {
+          "key": "b18-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -13470,6 +14361,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f7324aba-3519-36ce-901a-87762ca936d5",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -13488,6 +14380,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8aa9389f-cab3-3375-82a5-d4a3b810272a",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -13506,6 +14399,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f03980f0-d4e8-38ae-8163-30f1120eb05e",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -13524,6 +14418,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d5b64334-cc21-3799-82c1-f68b5e763c0f",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-4-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -13542,6 +14437,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "00c2297d-bd60-3a25-98cc-12958dc926ec",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-5-expanded",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -13560,6 +14456,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "19e2abf6-fb30-3fc3-9c2b-c4a17b14d677",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-6-expanded",
           "objective": "goal1",
           "itemType": "paraphrase"
         },
@@ -13578,6 +14475,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "927095ee-c263-3ba3-8a4c-9f3b0c7ac453",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -13596,6 +14494,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "b43b6e0a-8d3b-3083-9aab-dc521317d046",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -13614,6 +14513,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "74aae4bc-2dbb-3cef-80ec-bd040a15eed3",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-9-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -13632,6 +14532,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "656cc0e2-20d6-3428-a345-fb4966cd4b64",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-10-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -13650,6 +14551,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "044503b1-18d2-36fc-a029-0d5b3439d093",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-11-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -13668,6 +14570,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ff1e8653-d7cf-38f4-b8ab-5d601910df72",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-13-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -13686,6 +14589,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "23a73254-3c17-3a25-bffa-888aa0eba835",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-14-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -13704,6 +14608,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "57e06cfe-b616-3ccb-b1a2-121a688cd323",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-15-expanded",
           "objective": "goal2",
           "itemType": "text_grammar"
         },
@@ -13722,6 +14627,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cfc8a96a-e4cf-346f-a2fc-b22e9dae8155",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-16-expanded",
           "objective": "goal3",
           "itemType": "text_grammar"
         },
@@ -13740,6 +14646,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7cc3b56f-56f3-36df-bb83-a86595afbc29",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-17-expanded",
           "objective": "goal2",
           "itemType": "short_reading"
         },
@@ -13758,8 +14665,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "67458e8b-62e6-3d65-9e3b-c38af9104974",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-18-expanded",
           "objective": "goal1",
-          "itemType": "medium_reading"
+          "itemType": "medium_reading",
+          "distractorReasons": [
+            "Anna ingin kamus; tas adalah keinginan penulis.",
+            "“あたらしい かばん” tidak sesuai konteks. Anna ingin kamus; tas adalah keinginan penulis.",
+            "“でんしゃの きっぷ” tidak sesuai konteks. Anna ingin kamus; tas adalah keinginan penulis.",
+            "“えいがの きっぷ” tidak sesuai konteks. Anna ingin kamus; tas adalah keinginan penulis."
+          ]
         },
         "revision": {
           "fields": {
@@ -13844,6 +14758,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "cd2cb053-498e-3378-a5de-18c2635c9079",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-19-expanded",
           "objective": "goal2",
           "itemType": "information_retrieval"
         },
@@ -13862,6 +14777,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "dd9edc10-458e-35ef-97d7-34ffecce577c",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-21-expanded",
           "objective": "goal3",
           "itemType": "task_comprehension"
         },
@@ -13880,6 +14796,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ccb00590-90ba-363c-aea1-efe4a7ab1cea",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-22-expanded",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -13898,6 +14815,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1b1065a9-fb23-33cb-8c6e-71d4d4666b56",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-23-expanded",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -13916,6 +14834,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2a78bd54-ed70-32af-ac13-9858a9a3c20e",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-jlpt-r2-24-expanded",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -13934,6 +14853,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "061a5e82-a3c5-3daf-bcb3-255bc48e28d4",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-vocabulary-1",
           "objective": "goal2",
           "itemType": "kanji_reading"
         },
@@ -13952,6 +14872,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2a8c0448-ab65-3448-b5dd-1b63a6301696",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-vocabulary-2",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -13970,8 +14891,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "ef9ebf23-c01a-3d51-a9e0-80a0decff150",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-vocabulary-3",
           "objective": "goal2",
-          "itemType": "paraphrase"
+          "itemType": "paraphrase",
+          "distractorReasons": [
+            "Pilihan ini melaporkan kejadian kemarin, bukan rencana besok.",
+            "Tidak ingin pulang besok berbeda dari berencana istirahat di rumah.",
+            "Kebiasaan setiap hari tidak mempertahankan rencana khusus besok.",
+            "Kedua kalimat menyampaikan rencana istirahat di rumah besok; waktu dan tindakannya tetap."
+          ]
         },
         "revision": {
           "fields": {
@@ -14063,6 +14991,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "daacdf29-4e3e-3e78-a3c1-1958b4e04a78",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-vocabulary-4",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -14081,6 +15010,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "52f91855-3cc4-3326-b66a-64f06bfc9734",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-vocabulary-5",
           "objective": "goal2",
           "itemType": "context_vocabulary"
         },
@@ -14099,6 +15029,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7ff6f2f9-fcd5-3f6a-9ca3-e560cbbcfc63",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-1",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -14117,6 +15048,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "38cd4a79-b96d-3743-a03e-4544668c85e2",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-2",
           "objective": "goal3",
           "itemType": "quick_response"
         },
@@ -14135,6 +15067,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "84ab5191-d6b6-3c70-844e-12fa5a8549df",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -14153,6 +15086,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e16bb196-726a-3c45-b48f-f6a09c366f49",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-4",
           "objective": "goal1",
           "itemType": "task_comprehension"
         },
@@ -14171,8 +15105,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "7fdf563b-0639-31ef-810c-c8a239790e18",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-5",
           "objective": "goal2",
-          "itemType": "key_points"
+          "itemType": "key_points",
+          "distractorReasons": [
+            "B mengoreksi dugaan bulan depan menjadi dua bulan lagi, さらいげつ.",
+            "Bulan depan disangkal karena B memiliki pekerjaan.",
+            "Bulan ini tidak disebut sebagai jadwal pulang.",
+            "Tahun lalu adalah masa lampau, sedangkan dialog membahas rencana mendatang."
+          ]
         },
         "revision": {
           "fields": {
@@ -14257,6 +15198,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5e4b1141-534f-3837-8590-52c28fa1f0c2",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-6",
           "objective": "goal3",
           "itemType": "key_points"
         },
@@ -14275,6 +15217,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "887659c5-5763-3ffa-9903-3e20732c5d36",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-7",
           "objective": "goal3",
           "itemType": "verbal_expression"
         },
@@ -14299,6 +15242,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e28a924d-5e67-360a-a3c9-5124d0b49f4c",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-8",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -14323,6 +15267,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d73db98c-ff52-3b40-8519-2e6f261b029a",
         "form": "A",
         "expectedMeta": {
+          "key": "b19-a-expanded-listening-9",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -14350,6 +15295,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2343ba63-7a30-3816-946e-d0979bc48df1",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-1-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -14368,6 +15314,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8a883172-42d8-3955-9c6d-0c1ca447e073",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-2-expanded",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -14386,6 +15333,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fd79aa84-f5fd-3dcb-be94-3d209e02d62b",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-3-expanded",
           "objective": "goal1",
           "itemType": "orthography"
         },
@@ -14404,6 +15352,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c935c517-2269-3adc-bf5e-4869c5945bb0",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-4-expanded",
           "objective": "goal1",
           "itemType": "context_vocabulary"
         },
@@ -14422,6 +15371,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2fde3ebf-049d-3a03-84ad-31f6e98dcb89",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-5-expanded",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -14440,6 +15390,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "29584804-2a98-34bd-813c-363499097d56",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-6-expanded",
           "objective": "goal1",
           "itemType": "paraphrase"
         },
@@ -14458,6 +15409,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "888b4b68-feb0-3c61-83d2-7f3bfcc1f3c7",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-7-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -14476,6 +15428,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "da841d39-d0a6-3796-82a8-d9d3b04efdbc",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-8-expanded",
           "objective": "goal1",
           "itemType": "grammar_form"
         },
@@ -14494,6 +15447,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "e93fe385-f764-34c9-b178-b938cca97edb",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-9-expanded",
           "objective": "goal2",
           "itemType": "grammar_form"
         },
@@ -14512,6 +15466,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "fb6557e6-33c9-3d98-afce-da45a3cec8f6",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-10-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -14530,6 +15485,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "925851aa-6d2a-3a90-83e5-2908b3ff67e0",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-11-expanded",
           "objective": "goal3",
           "itemType": "grammar_form"
         },
@@ -14548,6 +15504,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "6907a638-ebe0-3a4c-a323-24072095debd",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-13-expanded",
           "objective": "goal1",
           "itemType": "sentence_composition"
         },
@@ -14566,6 +15523,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d92b9748-d34f-3960-a9c3-dbc3deea139d",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-14-expanded",
           "objective": "goal2",
           "itemType": "sentence_composition"
         },
@@ -14584,6 +15542,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "d1127650-0d96-3983-a493-e9c79ebc4a6b",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-15-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -14602,6 +15561,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "a4f4f0d6-1c14-3a8f-89ba-34d9cf134457",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-16-expanded",
           "objective": "goal1",
           "itemType": "text_grammar"
         },
@@ -14620,6 +15580,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "c7cb6fac-d593-3f9b-a422-7f80fb74d35e",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-17-expanded",
           "objective": "goal1",
           "itemType": "short_reading"
         },
@@ -14638,6 +15599,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "59d3a027-896d-38e0-be9f-8bfa45f451d6",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-18-expanded",
           "objective": "goal2",
           "itemType": "medium_reading"
         },
@@ -14656,8 +15618,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2269672a-fcbb-3c3a-a230-331bf9f403b2",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-19-expanded",
           "objective": "goal3",
-          "itemType": "information_retrieval"
+          "itemType": "information_retrieval",
+          "distractorReasons": [
+            "“としょかんで あります” tidak sesuai konteks. Tanggal 19 ditandai libur.",
+            "“10じから あります” tidak sesuai konteks. Tanggal 19 ditandai libur.",
+            "Tanggal 19 ditandai libur.",
+            "“がっこうで あります” tidak sesuai konteks. Tanggal 19 ditandai libur."
+          ]
         },
         "revision": {
           "fields": {
@@ -14744,6 +15713,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "8aefaee3-535c-3af8-a123-f9075bd09182",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-21-expanded",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -14762,6 +15732,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5c75b3ac-f92f-35f6-9b08-d9c2cd0e0b45",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-22-expanded",
           "objective": "goal1",
           "itemType": "key_points"
         },
@@ -14780,8 +15751,19 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "65720a4b-2503-3a03-8cf8-33a617ac4521",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-23-expanded",
           "objective": "goal1",
-          "itemType": "verbal_expression"
+          "itemType": "verbal_expression",
+          "distractorReasons": [
+            "Perjalanan tahun lalu berarti sudah punya pengalaman.",
+            "“いいえ、ありません。” tidak sesuai konteks. Perjalanan tahun lalu berarti sudah punya pengalaman.",
+            "“らいねんだけ いきます。” tidak sesuai konteks. Perjalanan tahun lalu berarti sudah punya pengalaman."
+          ],
+          "spokenChoices": [
+            "はい、あります。",
+            "いいえ、ありません。",
+            "らいねんだけ いきます。"
+          ]
         },
         "revision": {
           "fields": {
@@ -14857,6 +15839,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "93ed8291-27df-3fb4-9373-95a0c2bb9c13",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-jlpt-r2-24-expanded",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -14875,6 +15858,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "06f97596-57b2-327c-96d3-56834446263e",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-vocabulary-1",
           "objective": "goal1",
           "itemType": "kanji_reading"
         },
@@ -14893,6 +15877,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1afeeb60-43c6-3d77-a6a8-da3ef09c010a",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-vocabulary-2",
           "objective": "goal3",
           "itemType": "context_vocabulary"
         },
@@ -14911,6 +15896,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "dea59c06-a488-3f37-b296-c2e665502271",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-vocabulary-3",
           "objective": "goal1",
           "itemType": "paraphrase"
         },
@@ -14929,8 +15915,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "4d33d9ce-ff12-3ebc-9313-313674a90f14",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-vocabulary-4",
           "objective": "goal3",
-          "itemType": "context_vocabulary"
+          "itemType": "context_vocabulary",
+          "distractorReasons": [
+            "だから menyatakan akibat, sedangkan konteks menegaskan urutan waktu.",
+            "Urutan eksplisit mencuci muka dahulu lalu sarapan menggunakan それから.",
+            "でも menyatakan pertentangan, bukan urutan kegiatan.",
+            "しかし menyatakan pertentangan, bukan kegiatan sesudah mencuci muka."
+          ]
         },
         "revision": {
           "fields": {
@@ -15015,8 +16008,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "76ada53a-0d9b-3c72-9cf8-16dae3c3130d",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-vocabulary-5",
           "objective": "goal2",
-          "itemType": "paraphrase"
+          "itemType": "paraphrase",
+          "distractorReasons": [
+            "Bagian sebelum から memberi alasan ingin membaca lagi, yaitu bukunya menarik.",
+            "Murah tidak disebut sebagai alasan.",
+            "また berarti membaca lagi; belum membaca tidak dinyatakan dan bukan alasan pada kalimat.",
+            "Panjang bacaan tidak disebut sebagai alasan."
+          ]
         },
         "revision": {
           "fields": {
@@ -15101,8 +16101,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "5ae9d6fe-c49d-3653-ac54-78daeeeb696b",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-1",
           "objective": "goal2",
-          "itemType": "key_points"
+          "itemType": "key_points",
+          "distractorReasons": [
+            "A justru menyebut ongkos bus mahal; murah bukan alasannya.",
+            "Tidak ada pernyataan kaki sakit dalam dialog.",
+            "Tidak ada pernyataan bahwa A belum pernah naik bus; alasan yang disebut ialah menghindari basah.",
+            "A menyetujui bus karena hujan dan tidak ingin basah, meskipun ongkosnya mahal."
+          ]
         },
         "revision": {
           "fields": {
@@ -15187,6 +16194,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "422fa725-04a7-347d-a276-b5601d45b271",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-2",
           "objective": "goal1",
           "itemType": "quick_response"
         },
@@ -15205,6 +16213,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "72833bc5-fbc3-3d4e-9fe2-8fb136289676",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-3",
           "objective": "goal2",
           "itemType": "task_comprehension"
         },
@@ -15223,8 +16232,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "2e32e392-768f-3377-8e89-2ac5747e163e",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-4",
           "objective": "goal2",
-          "itemType": "task_comprehension"
+          "itemType": "task_comprehension",
+          "distractorReasons": [
+            "A memilih buku 500 yen meski lebih mahal, karena memiliki banyak foto.",
+            "Buku 300 yen adalah alternatif lebih murah yang tidak dipilih A.",
+            "A memilih これ, satu buku 500 yen, bukan keduanya.",
+            "A membeli buku yang berisi foto, bukan foto terpisah."
+          ]
         },
         "revision": {
           "fields": {
@@ -15307,8 +16323,15 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "f2bfa19f-b05a-3e46-b2f1-2ca0220d8dbd",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-5",
           "objective": "goal1",
-          "itemType": "key_points"
+          "itemType": "key_points",
+          "distractorReasons": [
+            "Pilihan ini memasukkan shinkansen yang belum pernah dinaiki dan menghilangkan pesawat.",
+            "Pilihan ini memasukkan shinkansen yang disangkal dan menghilangkan kapal.",
+            "B justru belum pernah naik shinkansen, sementara kapal dan pesawat sudah pernah.",
+            "B pernah naik kapal dan pesawat, tetapi belum pernah naik shinkansen."
+          ]
         },
         "revision": {
           "fields": {
@@ -15391,6 +16414,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "da9fa7e8-bca7-3b36-b731-65d2ae293ae5",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-6",
           "objective": "goal2",
           "itemType": "key_points"
         },
@@ -15409,6 +16433,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "03b0b263-6f5b-395c-a380-bf3ce48017d6",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-7",
           "objective": "goal1",
           "itemType": "verbal_expression"
         },
@@ -15433,6 +16458,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "1a310024-90be-3064-a1c1-ce2d3f197e6a",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-8",
           "objective": "goal2",
           "itemType": "verbal_expression"
         },
@@ -15457,6 +16483,7 @@ DECLARE plan jsonb := $plan$[
         "sourceId": "72e77fd4-bacf-31c1-96d1-bd767367ada7",
         "form": "A",
         "expectedMeta": {
+          "key": "b20-a-expanded-listening-9",
           "objective": "goal2",
           "itemType": "quick_response"
         },
@@ -15494,7 +16521,8 @@ BEGIN
   FOR r IN SELECT value FROM jsonb_array_elements(b->'rows') LOOP
    IF NOT EXISTS(SELECT 1 FROM quiz_questions q WHERE q.id=(r->>'sourceId')::uuid AND q.lesson_id=target
     AND q.assessment_meta->>'version'=b->>'expectedVersion' AND q.assessment_meta->>'form'=r->>'form'
-    AND q.assessment_meta @> (r->'expectedMeta'))
+    AND NOT EXISTS(SELECT 1 FROM jsonb_each(r->'expectedMeta') expected(key,value)
+     WHERE coalesce(q.assessment_meta->expected.key,'null'::jsonb) IS DISTINCT FROM expected.value))
     THEN RAISE EXCEPTION '217: source identity/objective changed Bab %',b->>'chapter'; END IF;
    IF NOT EXISTS(SELECT 1 FROM quiz_questions q WHERE q.id=(r->>'sourceId')::uuid AND to_jsonb(q) @> (r->'revision'->'expected'))
     THEN RAISE EXCEPTION '217: revised source content changed Bab %, question %',b->>'chapter',r->>'sourceId'; END IF;

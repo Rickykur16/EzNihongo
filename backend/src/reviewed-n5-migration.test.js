@@ -110,6 +110,10 @@ test('changed source choices or goal definitions cannot silently invalidate the 
  await assert.rejects(db.exec(buildReviewedMigration()),/revised source choices changed Bab 20/);
  await db.exec('ROLLBACK');
  await db.exec('BEGIN');
+ await db.query("UPDATE quiz_questions SET assessment_meta=jsonb_set(assessment_meta,'{distractorReasons}','[\"Teacher rationale\"]') WHERE id=$1",[row.sourceId]);
+ await assert.rejects(db.exec(buildReviewedMigration()),/source identity\/objective changed Bab 20/);
+ await db.exec('ROLLBACK');
+ await db.exec('BEGIN');
  await db.query("UPDATE lessons SET assessment_policy=jsonb_set(assessment_policy,'{objectives}','[{\"id\":\"owner-goal\",\"canDo\":\"changed\"}]') WHERE id=$1",[f.targets.get(20)]);
  await assert.rejects(db.exec(buildReviewedMigration()),/objective evidence coverage changed Bab 20/);
  await db.exec('ROLLBACK');
