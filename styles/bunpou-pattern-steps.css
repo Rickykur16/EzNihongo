@@ -1,0 +1,17 @@
+.gt-pattern-steps .gt-card[hidden],
+.gt-pattern-nav[hidden],
+.gt-pattern-status[hidden],
+#gt-complete-btn[hidden] { display: none !important; }
+.gt-pattern-position { margin: 0 0 12px; color: var(--du-ink-3); font-size: 13px; font-weight: 700; }
+.gt-pattern-steps .gt-card { scroll-margin-top: calc(var(--student-header-height, 68px) + 16px); }
+.gt-pattern-steps .gt-card__pattern:focus { outline: none; }
+.gt-pattern-steps .gt-card__pattern { overflow-wrap: anywhere; }
+.gt-pattern-steps .gt-card__example { max-width: 100%; box-sizing: border-box; }
+.gt-pattern-steps .gt-card__example span { min-width: 0; overflow-wrap: anywhere; }
+.gt-pattern-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+.gt-pattern-nav button { min-height: 44px; font: inherit; }
+.gt-pattern-status { margin: 10px 0; color: var(--du-ink-2); font-size: 13px; }
+.gt-popup .gt-pattern-steps .gt-card { scroll-margin-top: 16px; }
+@media (max-width: 600px) {
+  .gt-pattern-nav button { flex: 1 1 160px; }
+}
